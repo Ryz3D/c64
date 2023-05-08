@@ -228,13 +228,13 @@ bool get_operand(int8_t *op, uint16_t *op_addr, uint8_t ins, uint8_t *variants)
     else if (ins == variants[2])
     {
         // zeropage x
-        *op_addr = (uint8_t)ins_buf(2)[1] + x;
+        *op_addr = (uint8_t)ins_buf(2)[1] + (uint8_t)x;
         *op = read(*op_addr);
     }
     else if (ins == variants[3])
     {
         // zeropage y
-        *op_addr = (uint8_t)ins_buf(2)[1] + y;
+        *op_addr = (uint8_t)ins_buf(2)[1] + (uint8_t)y;
         *op = read(*op_addr);
     }
     else if (ins == variants[4])
@@ -248,7 +248,7 @@ bool get_operand(int8_t *op, uint16_t *op_addr, uint8_t ins, uint8_t *variants)
     {
         // indirect zeropage y
         uint8_t op_addr_addr = (uint8_t)ins_buf(2)[1];
-        *op_addr = read16(op_addr_addr) + y;
+        *op_addr = read16(op_addr_addr) + (uint8_t)y;
         *op = read(*op_addr);
     }
     else if (ins == variants[6])
@@ -262,14 +262,14 @@ bool get_operand(int8_t *op, uint16_t *op_addr, uint8_t ins, uint8_t *variants)
     {
         // absolute indexed x
         int8_t *buf = ins_buf(3);
-        *op_addr = (((uint16_t)buf[2] << 8) | (uint16_t)buf[1]) + x;
+        *op_addr = (((uint16_t)buf[2] << 8) | (uint16_t)buf[1]) + (uint8_t)x;
         *op = read(*op_addr);
     }
     else if (ins == variants[8])
     {
         // absolute indexed y
         int8_t *buf = ins_buf(3);
-        *op_addr = (((uint16_t)buf[2] << 8) | (uint16_t)buf[1]) + y;
+        *op_addr = (((uint16_t)buf[2] << 8) | (uint16_t)buf[1]) + (uint8_t)y;
         *op = read(*op_addr);
     }
   else if (ins == variants[9])
@@ -335,11 +335,21 @@ bool exec_adc(uint8_t ins, int8_t *res)
     int8_t op;
     if (get_operand(&op, &useless_addr, ins, new uint8_t[11]{0x69, 0x65, 0x75, 0x00, 0x61, 0x71, 0x6D, 0x7D, 0x79,0x00,0x00}))
     {
+      bool c_in = fC;
+      fC = 0; // TODO
+      fV = 0; // TODO
         *res = a += op + fC;
-        // TODO: fV, fC
         return 1;
     }
     return 0;
+}
+
+int8_t do_subtract(int8_t a, int8_t b)
+{
+  bool c_in = fC;
+  fC = 0; // TODO
+  fV = 0; // TODO
+  return a - b - fC;
 }
 
 bool exec_sbc(uint8_t ins, int8_t *res)
@@ -347,9 +357,7 @@ bool exec_sbc(uint8_t ins, int8_t *res)
     int8_t op;
     if (get_operand(&op, &useless_addr, ins, new uint8_t[11]{0xe9, 0xe5, 0xf5, 0x00, 0xe1, 0xf1, 0xeD, 0xfD, 0xf9,0x00,0x00}))
     {
-        // TODO: fC in
-        *res = a -= op - fC;
-        // TODO: fV, fC
+        *res = a = do_subtract(a, op);
         return 1;
     }
     return 0;
@@ -360,9 +368,7 @@ bool exec_cmp(uint8_t ins, int8_t *res)
     int8_t op;
     if (get_operand(&op, &useless_addr, ins, new uint8_t[11]{0xc9,0xc5,0xd5,0x00,0xc1,0xd1,0xcd,0xdd,0xd9,0x00,0x00}))
     {
-        // TODO: fC in
-        *res = a - op - fC;
-        // TODO: fV, fC
+        *res = do_subtract(a, op);
         return 1;
     }
     return 0;
@@ -373,9 +379,7 @@ bool exec_cpx(uint8_t ins, int8_t *res)
     int8_t op;
     if (get_operand(&op, &useless_addr, ins, new uint8_t[11]{0xe0,0xe4,0x00,0x00,0x00,0x00,0xec,0x00,0x00,0x00,0x00}))
     {
-        // TODO: fC in
-        *res = x - op - fC;
-        // TODO: fV, fC
+        *res = do_subtract(x, op);
         return 1;
     }
     return 0;
@@ -386,9 +390,7 @@ bool exec_cpy(uint8_t ins, int8_t *res)
     int8_t op;
     if (get_operand(&op, &useless_addr, ins, new uint8_t[11]{0xc0,0xc4,0x00,0x00,0x00,0x00,0xcc,0x00,0x00,0x00,0x00}))
     {
-        // TODO: fC in
-        *res = y - op - fC;
-        // TODO: fV, fC
+        *res = do_subtract(y, op);
         return 1;
     }
     return 0;
@@ -472,6 +474,75 @@ bool exec_ror(uint8_t ins, int8_t *res)
     return 0;
 }
 
+bool exec_lda(uint8_t ins, int8_t *res)
+{
+    int8_t op;
+    if (get_operand(&op, &useless_addr, ins, new uint8_t[11]{0xa9,0xa5,0xb5,0x00,0xa1,0xb1,0xad,0xbd,0xb9,0x00,0x00}))
+    {
+      *res = a = op;
+        return 1;
+    }
+    return 0;
+}
+
+bool exec_sta(uint8_t ins, int8_t *res)
+{
+    int8_t op;
+  uint16_t op_addr;
+    if (get_operand(&op, &op_addr, ins, new uint8_t[11]{0x00,0x85,0x95,0x00,0x81,0x91,0x8d,0x9d,0x99,0x00,0x00}))
+    {
+      write(op_addr, a);
+        return 1;
+    }
+    return 0;
+}
+
+bool exec_ldx(uint8_t ins, int8_t *res)
+{
+    int8_t op;
+    if (get_operand(&op, &useless_addr, ins, new uint8_t[11]{0xa2,0xa6,0x00,0xb6,0x00,0x00,0xae,0x00,0xbe,0x00,0x00}))
+    {
+      *res = x = op;
+        return 1;
+    }
+    return 0;
+}
+
+bool exec_stx(uint8_t ins, int8_t *res)
+{
+    int8_t op;
+  uint16_t op_addr;
+    if (get_operand(&op, &op_addr, ins, new uint8_t[11]{0x00,0x86,0x00,0x96,0x00,0x00,0x8e,0x00,0x00,0x00,0x00}))
+    {
+      write(op_addr, x);
+        return 1;
+    }
+    return 0;
+}
+
+bool exec_ldy(uint8_t ins, int8_t *res)
+{
+    int8_t op;
+    if (get_operand(&op, &useless_addr, ins, new uint8_t[11]{0xa0,0xa4,0xb4,0x00,0x00,0x00,0xac,0xbc,0x00,0x00,0x00}))
+    {
+      *res = y = op;
+        return 1;
+    }
+    return 0;
+}
+
+bool exec_sty(uint8_t ins, int8_t *res)
+{
+    int8_t op;
+  uint16_t op_addr;
+    if (get_operand(&op, &op_addr, ins, new uint8_t[11]{0x00,0x84,0x94,0x00,0x00,0x00,0x8c,0x00,0x00,0x00,0x00}))
+    {
+      write(op_addr, y);
+        return 1;
+    }
+    return 0;
+}
+
 void exec_ins()
 {
     uint8_t ins = (uint8_t)read(pc);
@@ -536,6 +607,18 @@ void exec_ins()
       }
     else if (exec_ror(ins, &res))
         ;
+  else if (exec_lda(ins, &res))
+    ;
+  else if (exec_sta(ins, &res))
+    skipZN = 1;
+  else if (exec_ldx(ins, &res))
+    ;
+  else if (exec_stx(ins, &res))
+    skipZN = 1;
+  else if (exec_ldy(ins, &res))
+    ;
+  else if (exec_sty(ins, &res))
+    skipZN = 1;
     else if (ins == 0xaa)
         res = x = a;
     else if (ins == 0x8a)
@@ -560,7 +643,7 @@ void exec_ins()
     }
     else if (ins == 0x28)
     {
-        uint8_t status = res = s_pop();
+        uint8_t status = s_pop();
         fN = status & (1 << 7);
         fV = status & (1 << 6);
         // fB = status & (1 << 4);
@@ -568,6 +651,7 @@ void exec_ins()
         fI = status & (1 << 2);
         fZ = status & (1 << 1);
         fC = status & (1 << 0);
+      skipZN = 1;
     }
     else if (ins == 0x08)
     {
