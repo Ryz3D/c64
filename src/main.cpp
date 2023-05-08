@@ -400,7 +400,7 @@ bool exec_dec(uint8_t ins, int8_t *res)
     uint16_t op_addr;
     if (get_operand(&op, &op_addr, ins, new uint8_t[11]{0x00,0xc6,0xd6,0x00,0x00,0x00,0xce,0xde,0x00,0x00,0x00}))
     {
-        write(op_addr, op-1);
+        write(op_addr, *res=op-1);
         return 1;
     }
     return 0;
@@ -412,7 +412,61 @@ bool exec_inc(uint8_t ins, int8_t *res)
     uint16_t op_addr;
     if (get_operand(&op, &op_addr, ins, new uint8_t[11]{0x00,0xe6,0xf6,0x00,0x00,0x00,0xee,0xfe,0x00,0x00,0x00}))
     {
-        write(op_addr, op+1);
+        write(op_addr, *res=op+1);
+        return 1;
+    }
+    return 0;
+}
+
+bool exec_asl(uint8_t ins, int8_t *res)
+{
+    int8_t op;
+    uint16_t op_addr;
+    if (get_operand(&op, &op_addr, ins, new uint8_t[11]{0x00,0x06,0x16,0x00,0x00,0x00,0x0e,0x1e,0x00,0x00,0x00}))
+    {
+      fC=op>>7;
+        write(op_addr, *res=op<<1);
+        return 1;
+    }
+    return 0;
+}
+
+bool exec_rol(uint8_t ins, int8_t *res)
+{
+    int8_t op;
+    uint16_t op_addr;
+    if (get_operand(&op, &op_addr, ins, new uint8_t[11]{0x00,0x26,0x36,0x00,0x00,0x00,0x2e,0x3e,0x00,0x00,0x00}))
+    {
+    bool c_in=fC;
+      fC=op>>7;
+        write(op_addr, *res=(op<<1)|c_in);
+        return 1;
+    }
+    return 0;
+}
+
+bool exec_lsr(uint8_t ins, int8_t *res)
+{
+    int8_t op;
+    uint16_t op_addr;
+    if (get_operand(&op, &op_addr, ins, new uint8_t[11]{0x00,0x46,0x56,0x00,0x00,0x00,0x4e,0x5e,0x00,0x00,0x00}))
+    {
+      fC=op&1;
+        write(op_addr, *res=op>>1);
+        return 1;
+    }
+    return 0;
+}
+
+bool exec_ror(uint8_t ins, int8_t *res)
+{
+    int8_t op;
+    uint16_t op_addr;
+    if (get_operand(&op, &op_addr, ins, new uint8_t[11]{0x00,0x66,0x76,0x00,0x00,0x00,0x6e,0x7e,0x00,0x00,0x00}))
+    {
+    bool c_in=fC;
+      fC=op&1;
+        write(op_addr, *res=(op>>1)|(c_in<<7));
         return 1;
     }
     return 0;
@@ -452,6 +506,36 @@ void exec_ins()
       res = x++;
     else if (ins == 0xc8)
       res = y++;
+    else if (ins == 0x0a)
+      {
+      fC=a>>7;
+      res=a = a << 1;
+      }
+    else if (exec_asl(ins, &res))
+        ;
+    else if (ins == 0x2a)
+      {
+    bool c_in=fC;
+      fC=a>>7;
+      res = a = (a<<1)|c_in;
+      }
+    else if (exec_rol(ins, &res))
+        ;
+    else if (ins == 0x4a)
+      {
+      fC=a&1;
+      res = a = a >> 1;
+      }
+    else if (exec_lsr(ins, &res))
+        ;
+    else if (ins == 0x6a)
+      {
+    bool c_in=fC;
+      fC=a&1;
+      res = a = (a >> 1) | (c_in << 7);
+      }
+    else if (exec_ror(ins, &res))
+        ;
     else if (ins == 0xaa)
         res = x = a;
     else if (ins == 0x8a)
