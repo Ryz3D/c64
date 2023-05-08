@@ -355,6 +355,69 @@ bool exec_sbc(uint8_t ins, int8_t *res)
     return 0;
 }
 
+bool exec_cmp(uint8_t ins, int8_t *res)
+{
+    int8_t op;
+    if (get_operand(&op, &useless_addr, ins, new uint8_t[11]{0xc9,0xc5,0xd5,0x00,0xc1,0xd1,0xcd,0xdd,0xd9,0x00,0x00}))
+    {
+        // TODO: fC in
+        *res = a - op - fC;
+        // TODO: fV, fC
+        return 1;
+    }
+    return 0;
+}
+
+bool exec_cpx(uint8_t ins, int8_t *res)
+{
+    int8_t op;
+    if (get_operand(&op, &useless_addr, ins, new uint8_t[11]{0xe0,0xe4,0x00,0x00,0x00,0x00,0xec,0x00,0x00,0x00,0x00}))
+    {
+        // TODO: fC in
+        *res = x - op - fC;
+        // TODO: fV, fC
+        return 1;
+    }
+    return 0;
+}
+
+bool exec_cpy(uint8_t ins, int8_t *res)
+{
+    int8_t op;
+    if (get_operand(&op, &useless_addr, ins, new uint8_t[11]{0xc0,0xc4,0x00,0x00,0x00,0x00,0xcc,0x00,0x00,0x00,0x00}))
+    {
+        // TODO: fC in
+        *res = y - op - fC;
+        // TODO: fV, fC
+        return 1;
+    }
+    return 0;
+}
+
+bool exec_dec(uint8_t ins, int8_t *res)
+{
+    int8_t op;
+    uint16_t op_addr;
+    if (get_operand(&op, &op_addr, ins, new uint8_t[11]{0x00,0xc6,0xd6,0x00,0x00,0x00,0xce,0xde,0x00,0x00,0x00}))
+    {
+        write(op_addr, op-1);
+        return 1;
+    }
+    return 0;
+}
+
+bool exec_inc(uint8_t ins, int8_t *res)
+{
+    int8_t op;
+    uint16_t op_addr;
+    if (get_operand(&op, &op_addr, ins, new uint8_t[11]{0x00,0xe6,0xf6,0x00,0x00,0x00,0xee,0xfe,0x00,0x00,0x00}))
+    {
+        write(op_addr, op+1);
+        return 1;
+    }
+    return 0;
+}
+
 void exec_ins()
 {
     uint8_t ins = (uint8_t)read(pc);
@@ -371,6 +434,24 @@ void exec_ins()
         ;
     else if (exec_sbc(ins, &res))
         ;
+    else if (exec_cmp(ins, &res))
+        ;
+    else if (exec_cpx(ins, &res))
+        ;
+    else if (exec_cpy(ins, &res))
+        ;
+    else if (exec_dec(ins, &res))
+        ;
+    else if (ins == 0xca)
+      res = x--;
+    else if (ins == 0x88)
+      res = y--;
+    else if (exec_inc(ins, &res))
+        ;
+    else if (ins == 0xe8)
+      res = x++;
+    else if (ins == 0xc8)
+      res = y++;
     else if (ins == 0xaa)
         res = x = a;
     else if (ins == 0x8a)
