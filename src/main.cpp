@@ -5,6 +5,9 @@
 TODO:
 - cout on jmp to $ffd2
 - code injection into free ram
+- ins_buf always freed?
+- 16bit stack order?
+- pc incrementing
 
 */
 
@@ -27,6 +30,19 @@ uint8_t s_pop()
 void s_push(int8_t d)
 {
     stack[stack_pointer--] = d;
+}
+
+uint16_t s_pop16()
+{
+  uint8_t a = s_pop();
+  uint8_t b = s_pop();
+  return (b << 8) | a
+}
+
+void s_push16(uint16_t d)
+{
+  s_push(d >> 8);
+  s_push(d & 0xff);
 }
 
 int8_t read(uint16_t addr)
@@ -336,20 +352,19 @@ bool exec_adc(uint8_t ins, int8_t *res)
     if (get_operand(&op, &useless_addr, ins, new uint8_t[11]{0x69, 0x65, 0x75, 0x00, 0x61, 0x71, 0x6D, 0x7D, 0x79,0x00,0x00}))
     {
       bool c_in = fC;
-      fC = 0; // TODO
-      fV = 0; // TODO
-        *res = a += op + fC;
+      fC = fV = op > 255 - a; //TODO: check
+        *res = a += op + c_in;
         return 1;
     }
     return 0;
 }
 
-int8_t do_subtract(int8_t a, int8_t b)
+int8_t do_subtract(int8_t op0, int8_t op1)
 {
   bool c_in = fC;
-  fC = 0; // TODO
-  fV = 0; // TODO
-  return a - b - fC;
+  fC = op0 >= op1; // TODO
+  fV = 0; // TODO: less than initial value or equal with carry in set
+  return op0 - op1 - c_in;
 }
 
 bool exec_sbc(uint8_t ins, int8_t *res)
@@ -369,6 +384,7 @@ bool exec_cmp(uint8_t ins, int8_t *res)
     if (get_operand(&op, &useless_addr, ins, new uint8_t[11]{0xc9,0xc5,0xd5,0x00,0xc1,0xd1,0xcd,0xdd,0xd9,0x00,0x00}))
     {
         *res = do_subtract(a, op);
+      fC = a >= op;
         return 1;
     }
     return 0;
@@ -380,6 +396,7 @@ bool exec_cpx(uint8_t ins, int8_t *res)
     if (get_operand(&op, &useless_addr, ins, new uint8_t[11]{0xe0,0xe4,0x00,0x00,0x00,0x00,0xec,0x00,0x00,0x00,0x00}))
     {
         *res = do_subtract(x, op);
+      fC = x >= op;
         return 1;
     }
     return 0;
@@ -391,6 +408,7 @@ bool exec_cpy(uint8_t ins, int8_t *res)
     if (get_operand(&op, &useless_addr, ins, new uint8_t[11]{0xc0,0xc4,0x00,0x00,0x00,0x00,0xcc,0x00,0x00,0x00,0x00}))
     {
         *res = do_subtract(y, op);
+      fC = y >= op;
         return 1;
     }
     return 0;
@@ -708,10 +726,10 @@ void exec_ins()
   }
   else if (ins == 0x00)
   {
-    s_push16(pc);
+    s_push16(pc + 1);
     s_push((fN << 7) | (fV << 6) | (1 << 5) | (fB << 4) | (fD << 3) | (fI << 2) | (fZ << 1) | (fC << 0));
     fB=fI=1;
-    irq();
+    pc = read16(0xfffe);
     skipZN=1;
   }
   else if (ins == 0x40)
@@ -745,42 +763,62 @@ void exec_ins()
   }
   else if (ins == 0x6c)
   {
+        pc = read16(read16(pc+1));
       skipZN =1;
   }
   else if (ins == 0x24)
   {
+    int8_t *buf = ins_buf(2);
+    uint8_t op = read(buf[1]);
+    fZ = (a & op) == 0;
+    fN = op & (1 << 7);
+    fV = op & (1 << 6);
+      free(buf);
       skipZN =1;
   }
   else if (ins == 0x2c)
   {
+    int8_t *buf = ins_buf(3);
+    uint8_t op = read(((uint16_t)buf[2] << 8) | (uint16_t)buf[1]);
+    fZ = (a & op) == 0;
+    fN = op & (1 << 7);
+    fV = op & (1 << 6);
+      free(buf);
       skipZN =1;
   }
   else if (ins == 0x18)
   {
+    fC=0;
       skipZN =1;
   }
   else if (ins == 0x38)
   {
+    fC=1;
       skipZN =1;
   }
   else if (ins == 0xd8)
   {
+    fD=0;
       skipZN =1;
   }
   else if (ins == 0xf8)
   {
+    fD=1;
       skipZN =1;
   }
   else if (ins == 0x58)
   {
+    fI=0;
       skipZN =1;
   }
   else if (ins == 0x78)
   {
+    fI=1;
       skipZN =1;
   }
   else if (ins == 0xb8)
   {
+    fV=0;
       skipZN =1;
   }
   else if (ins == 0xea)
@@ -807,15 +845,12 @@ void reset()
 
 void nmi()
 {
-    /*
-    TODO: The first thing the CPU does in response to both types of interrupts is to save the program counter and the status register onto the stack for retrieval after servicing the interrupt. For both types of interrupt, along with the cold start, the CPU is hardwired to perform what amounts to an indirect JMP via one of three vectors stored in the very last six bytes of KERNAL ROM:
-    */
-    pc = read16(0xfffa);
+    // pc = read16(0xfffa);
 }
 
 void irq()
 {
-    pc = read16(0xfffe);
+  // TODO: trigger correctly: flags, stack, maskable, pc increment? probably not
 }
 
 int main(int argc, char *argv[])
