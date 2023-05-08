@@ -658,6 +658,135 @@ void exec_ins()
         s_push((fN << 7) | (fV << 6) | (1 << 5) | (fB << 4) | (fD << 3) | (fI << 2) | (fZ << 1) | (fC << 0));
         skipZN = 1;
     }
+  else if (ins == 0x10)
+  {
+    if (!fN)
+      pc += read(pc + 1);
+    skipZN=1;
+  }
+  else if (ins == 0x30)
+  {
+    if (fN)
+      pc += read(pc + 1);
+    skipZN=1;
+  }
+  else if (ins == 0x50)
+  {
+    if (!fV)
+      pc += read(pc + 1);
+    skipZN=1;
+  }
+  else if (ins == 0x70)
+  {
+    if (fV)
+      pc += read(pc + 1);
+    skipZN=1;
+  }
+  else if (ins == 0x90)
+  {
+    if (!fC)
+      pc += read(pc + 1);
+    skipZN=1;
+  }
+  else if (ins == 0xb0)
+  {
+    if (fC)
+      pc += read(pc + 1);
+    skipZN=1;
+  }
+  else if (ins == 0xd0)
+  {
+    if (!fZ)
+      pc += read(pc + 1);
+    skipZN=1;
+  }
+  else if (ins == 0xf0)
+  {
+    if (fZ)
+      pc += read(pc + 1);
+    skipZN=1;
+  }
+  else if (ins == 0x00)
+  {
+    s_push16(pc);
+    s_push((fN << 7) | (fV << 6) | (1 << 5) | (fB << 4) | (fD << 3) | (fI << 2) | (fZ << 1) | (fC << 0));
+    fB=fI=1;
+    irq();
+    skipZN=1;
+  }
+  else if (ins == 0x40)
+  {
+        uint8_t status = s_pop();
+        fN = status & (1 << 7);
+        fV = status & (1 << 6);
+        // fB = status & (1 << 4);
+        fD = status & (1 << 3);
+        fI = status & (1 << 2);
+        fZ = status & (1 << 1);
+        fC = status & (1 << 0);
+    pc = s_pop16();
+      skipZN =1;
+  }
+  else if (ins == 0x20)
+  {
+    s_push16(pc);
+        pc = read16(pc+1);
+      skipZN =1;
+  }
+  else if (ins == 0x60)
+  {
+    pc=s_pop16();
+      skipZN =1;
+  }
+  else if (ins == 0x4c)
+  {
+        pc = read16(pc+1);
+      skipZN =1;
+  }
+  else if (ins == 0x6c)
+  {
+      skipZN =1;
+  }
+  else if (ins == 0x24)
+  {
+      skipZN =1;
+  }
+  else if (ins == 0x2c)
+  {
+      skipZN =1;
+  }
+  else if (ins == 0x18)
+  {
+      skipZN =1;
+  }
+  else if (ins == 0x38)
+  {
+      skipZN =1;
+  }
+  else if (ins == 0xd8)
+  {
+      skipZN =1;
+  }
+  else if (ins == 0xf8)
+  {
+      skipZN =1;
+  }
+  else if (ins == 0x58)
+  {
+      skipZN =1;
+  }
+  else if (ins == 0x78)
+  {
+      skipZN =1;
+  }
+  else if (ins == 0xb8)
+  {
+      skipZN =1;
+  }
+  else if (ins == 0xea)
+  {
+      skipZN =1;
+  }
     else
         std::cout << "unknown instruction " << ins << std::endl;
 
