@@ -480,7 +480,7 @@ void exec_ins()
 
     if (exec_ora(ins, &res))
         ;
-    else if (exec_ora(ins, &res))
+    else if (exec_and(ins, &res))
         ;
     else if (exec_eor(ins, &res))
         ;
