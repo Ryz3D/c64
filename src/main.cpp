@@ -272,6 +272,21 @@ bool get_operand(int8_t *op, uint16_t *op_addr, uint8_t ins, uint8_t *variants)
         *op_addr = (((uint16_t)buf[2] << 8) | (uint16_t)buf[1]) + y;
         *op = read(*op_addr);
     }
+  else if (ins == variants[9])
+  {
+    // indirect
+        int8_t *buf = ins_buf(3);
+        uint16_t op_addr_addr = ((uint16_t)buf[2] << 8) | (uint16_t)buf[1];
+        *op_addr = read16(op_addr_addr);
+        *op = read(*op_addr);
+  }
+  else if (ins == variants[10])
+  {
+    // relative
+      uint16_t base_pc=pc;
+        *op_addr = base_pc+ins_buf(2)[1];
+        *op = read(*op_addr);
+  }
     else
         return 0;
 
@@ -285,7 +300,7 @@ uint16_t useless_addr;
 bool exec_ora(uint8_t ins, int8_t *res)
 {
     int8_t op;
-    if (get_operand(&op, &useless_addr, ins, new uint8_t[9]{0x09, 0x05, 0x15, 0x00, 0x01, 0x11, 0x0d, 0x1d, 0x19}))
+    if (get_operand(&op, &useless_addr, ins, new uint8_t[11]{0x09, 0x05, 0x15, 0x00, 0x01, 0x11, 0x0d, 0x1d, 0x19,0x00,0x00}))
     {
         *res = a |= op;
         return 1;
@@ -296,7 +311,7 @@ bool exec_ora(uint8_t ins, int8_t *res)
 bool exec_and(uint8_t ins, int8_t *res)
 {
     int8_t op;
-    if (get_operand(&op, &useless_addr, ins, new uint8_t[9]{0x29, 0x25, 0x35, 0x00, 0x21, 0x31, 0x2D, 0x3D, 0x39}))
+    if (get_operand(&op, &useless_addr, ins, new uint8_t[11]{0x29, 0x25, 0x35, 0x00, 0x21, 0x31, 0x2D, 0x3D, 0x39,0x00,0x00}))
     {
         *res = a &= op;
         return 1;
@@ -307,7 +322,7 @@ bool exec_and(uint8_t ins, int8_t *res)
 bool exec_eor(uint8_t ins, int8_t *res)
 {
     int8_t op;
-    if (get_operand(&op, &useless_addr, ins, new uint8_t[9]{0x49, 0x45, 0x55, 0x00, 0x41, 0x51, 0x4D, 0x5D, 0x59}))
+    if (get_operand(&op, &useless_addr, ins, new uint8_t[11]{0x49, 0x45, 0x55, 0x00, 0x41, 0x51, 0x4D, 0x5D, 0x59,0x00,0x00}))
     {
         *res = a ^= op;
         return 1;
@@ -318,7 +333,7 @@ bool exec_eor(uint8_t ins, int8_t *res)
 bool exec_adc(uint8_t ins, int8_t *res)
 {
     int8_t op;
-    if (get_operand(&op, &useless_addr, ins, new uint8_t[9]{0x69, 0x65, 0x75, 0x00, 0x61, 0x71, 0x6D, 0x7D, 0x79}))
+    if (get_operand(&op, &useless_addr, ins, new uint8_t[11]{0x69, 0x65, 0x75, 0x00, 0x61, 0x71, 0x6D, 0x7D, 0x79,0x00,0x00}))
     {
         *res = a += op + fC;
         // TODO: fV, fC
@@ -330,7 +345,7 @@ bool exec_adc(uint8_t ins, int8_t *res)
 bool exec_sbc(uint8_t ins, int8_t *res)
 {
     int8_t op;
-    if (get_operand(&op, &useless_addr, ins, new uint8_t[9]{0xe9, 0xe5, 0xf5, 0x00, 0xe1, 0xf1, 0xeD, 0xfD, 0xf9}))
+    if (get_operand(&op, &useless_addr, ins, new uint8_t[11]{0xe9, 0xe5, 0xf5, 0x00, 0xe1, 0xf1, 0xeD, 0xfD, 0xf9,0x00,0x00}))
     {
         // TODO: fC in
         *res = a -= op - fC;
