@@ -9,13 +9,15 @@ TODO:
 - decimal arithmetic
 - cia registers / timers
 - actually test carry (subtraction), borrow?
+- keypress:
+$c5 $00-$3F: keyboard matrix code $40=none
 
 */
 
 // $0001
 bool charen, hiram, loram;
 uint8_t stack_pointer;
-int8_t zeropage[256], stack[256], sysvar[512];
+int8_t zeropage[256], stack[256], sysvar[512], screen[1024];
 int8_t basicram[38912];
 uint16_t pc;
 int8_t a, x, y;
@@ -71,6 +73,7 @@ int8_t read(uint16_t addr)
     {
         addr_off -= 0x0400;
         // SCREEN
+        return screen[addr_off];
     }
     else if (addr < 0xa000)
     {
@@ -168,6 +171,7 @@ void write(uint16_t addr, int8_t d)
     {
         addr_off -= 0x0400;
         // SCREEN
+        screen[addr_off] = d;
     }
     else if (addr < 0xa000)
     {
@@ -416,7 +420,7 @@ bool exec_cmp(uint8_t ins, int8_t *res)
     if (get_operand(&op, &useless_addr, ins, v_cmp))
     {
         *res = a - op;
-        fC = a >= op;
+        fC = (uint8_t)a >= (uint8_t)op;
         return 1;
     }
     return 0;
@@ -428,7 +432,7 @@ bool exec_cpx(uint8_t ins, int8_t *res)
     if (get_operand(&op, &useless_addr, ins, v_cpx))
     {
         *res = x - op;
-        fC = x >= op;
+        fC = (uint8_t)x >= (uint8_t)op;
         return 1;
     }
     return 0;
@@ -440,7 +444,7 @@ bool exec_cpy(uint8_t ins, int8_t *res)
     if (get_operand(&op, &useless_addr, ins, v_cpy))
     {
         *res = y - op;
-        fC = y >= op;
+        fC = (uint8_t)y >= (uint8_t)op;
         return 1;
     }
     return 0;
@@ -947,15 +951,31 @@ int main(int argc, char *argv[])
 
     debug = 0;
 
-    while (pc != 0xe5560)
+    while (pc != 0xa4080)
     {
         exec_ins();
 
         if (fD)
             cout << "warn: fD active!" << endl;
         if (pc == 0xe716)
+        {
             cout << a;
+            /*
+            cout << " ";
+            if (stack_pointer != 0xff)
+            {
+                cout << " stack(" << setfill('0') << setw(2) << (int)(uint8_t)stack_pointer << "): ";
+                for (int i = 0; i < 0xff - stack_pointer && i < 10; i++)
+                {
+                    cout << setfill('0') << setw(2) << (int)(uint8_t)read(0x1ff - i) << " ";
+                }
+            }
+            cout << endl;
+            */
+        }
     }
+
+    debug = 1;
 
     while (1)
     {
