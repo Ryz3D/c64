@@ -20,6 +20,7 @@ int8_t basicram[38912];
 uint16_t pc;
 int8_t a, x, y;
 bool fN, fV, fB, fD, fI, fZ, fC;
+int8_t ins_buf[3];
 
 bool debug = 0;
 
@@ -222,13 +223,11 @@ uint16_t read16(uint16_t addr0)
     return ((uint16_t)(uint8_t)read(addr0 + 1) << 8) | (uint16_t)(uint8_t)read(addr0);
 }
 
-int8_t *ins_buf(uint8_t len)
+void load_ins_buf(uint8_t len)
 {
-    int8_t *buf = (int8_t *)malloc(len);
     for (uint16_t i = 0; i < len; i++)
-        buf[i] = read(pc + i);
+        ins_buf[i] = read(pc + i);
     pc += len;
-    return buf;
 }
 
 bool get_operand(int8_t *op, uint16_t *op_addr, uint8_t ins, uint8_t *variants)
@@ -236,101 +235,119 @@ bool get_operand(int8_t *op, uint16_t *op_addr, uint8_t ins, uint8_t *variants)
     if (ins == 0x00)
         return 0;
 
-    int8_t *buf = nullptr;
     if (ins == variants[0])
     {
         // immediate
-        buf = ins_buf(2);
-        *op = buf[1];
+        load_ins_buf(2);
+        *op = ins_buf[1];
     }
     else if (ins == variants[1])
     {
         // zeropage
-        buf = ins_buf(2);
-        *op_addr = (uint8_t)buf[1];
+        load_ins_buf(2);
+        *op_addr = (uint8_t)ins_buf[1];
         *op = read(*op_addr);
     }
     else if (ins == variants[2])
     {
         // zeropage x
-        buf = ins_buf(2);
-        *op_addr = (uint8_t)buf[1] + (uint8_t)x;
+        load_ins_buf(2);
+        *op_addr = (uint8_t)ins_buf[1] + (uint8_t)x;
         *op = read(*op_addr);
     }
     else if (ins == variants[3])
     {
         // zeropage y
-        buf = ins_buf(2);
-        *op_addr = (uint8_t)buf[1] + (uint8_t)y;
+        load_ins_buf(2);
+        *op_addr = (uint8_t)ins_buf[1] + (uint8_t)y;
         *op = read(*op_addr);
     }
     else if (ins == variants[4])
     {
         // indirect zeropage x
-        buf = ins_buf(2);
-        uint8_t op_addr_addr = (uint8_t)buf[1] + x;
+        load_ins_buf(2);
+        uint8_t op_addr_addr = (uint8_t)ins_buf[1] + x;
         *op_addr = read16(op_addr_addr);
         *op = read(*op_addr);
     }
     else if (ins == variants[5])
     {
         // indirect zeropage y
-        buf = ins_buf(2);
-        uint8_t op_addr_addr = (uint8_t)buf[1];
+        load_ins_buf(2);
+        uint8_t op_addr_addr = (uint8_t)ins_buf[1];
         *op_addr = read16(op_addr_addr) + (uint8_t)y;
         *op = read(*op_addr);
     }
     else if (ins == variants[6])
     {
         // absolute
-        buf = ins_buf(3);
-        *op_addr = ((uint16_t)(uint8_t)buf[2] << 8) | (uint16_t)(uint8_t)buf[1];
+        load_ins_buf(3);
+        *op_addr = ((uint16_t)(uint8_t)ins_buf[2] << 8) | (uint16_t)(uint8_t)ins_buf[1];
         *op = read(*op_addr);
     }
     else if (ins == variants[7])
     {
         // absolute indexed x
-        buf = ins_buf(3);
-        *op_addr = (((uint16_t)(uint8_t)buf[2] << 8) | (uint16_t)(uint8_t)buf[1]) + (uint8_t)x;
+        load_ins_buf(3);
+        *op_addr = (((uint16_t)(uint8_t)ins_buf[2] << 8) | (uint16_t)(uint8_t)ins_buf[1]) + (uint8_t)x;
         *op = read(*op_addr);
     }
     else if (ins == variants[8])
     {
         // absolute indexed y
-        buf = ins_buf(3);
-        *op_addr = (((uint16_t)(uint8_t)buf[2] << 8) | (uint16_t)(uint8_t)buf[1]) + (uint8_t)y;
+        load_ins_buf(3);
+        *op_addr = (((uint16_t)(uint8_t)ins_buf[2] << 8) | (uint16_t)(uint8_t)ins_buf[1]) + (uint8_t)y;
         *op = read(*op_addr);
     }
     else if (ins == variants[9])
     {
         // indirect
-        buf = ins_buf(3);
-        uint16_t op_addr_addr = ((uint16_t)(uint8_t)buf[2] << 8) | (uint16_t)(uint8_t)buf[1];
+        load_ins_buf(3);
+        uint16_t op_addr_addr = ((uint16_t)(uint8_t)ins_buf[2] << 8) | (uint16_t)(uint8_t)ins_buf[1];
         *op_addr = read16(op_addr_addr);
         *op = read(*op_addr);
     }
     else if (ins == variants[10])
     {
         // relative
-        buf = ins_buf(2);
+        load_ins_buf(2);
         uint16_t base_pc = pc;
-        *op_addr = base_pc + buf[1];
+        *op_addr = base_pc + ins_buf[1];
         *op = read(*op_addr);
     }
     else
         return 0;
 
-    if (buf != nullptr)
-        free(buf);
     return 1;
 }
 
 uint16_t useless_addr;
 
+uint8_t v_ora[] = {0x09, 0x05, 0x15, 0x00, 0x01, 0x11, 0x0d, 0x1d, 0x19, 0x00, 0x00};
+uint8_t v_and[] = {0x29, 0x25, 0x35, 0x00, 0x21, 0x31, 0x2D, 0x3D, 0x39, 0x00, 0x00};
+uint8_t v_eor[] = {0x49, 0x45, 0x55, 0x00, 0x41, 0x51, 0x4D, 0x5D, 0x59, 0x00, 0x00};
+uint8_t v_adc[] = {0x69, 0x65, 0x75, 0x00, 0x61, 0x71, 0x6D, 0x7D, 0x79, 0x00, 0x00};
+uint8_t v_sbc[] = {0xe9, 0xe5, 0xf5, 0x00, 0xe1, 0xf1, 0xeD, 0xfD, 0xf9, 0x00, 0x00};
+uint8_t v_cmp[] = {0xc9, 0xc5, 0xd5, 0x00, 0xc1, 0xd1, 0xcd, 0xdd, 0xd9, 0x00, 0x00};
+uint8_t v_cpx[] = {0xe0, 0xe4, 0x00, 0x00, 0x00, 0x00, 0xec, 0x00, 0x00, 0x00, 0x00};
+uint8_t v_cpy[] = {0xc0, 0xc4, 0x00, 0x00, 0x00, 0x00, 0xcc, 0x00, 0x00, 0x00, 0x00};
+uint8_t v_dec[] = {0x00, 0xc6, 0xd6, 0x00, 0x00, 0x00, 0xce, 0xde, 0x00, 0x00, 0x00};
+uint8_t v_inc[] = {0x00, 0xe6, 0xf6, 0x00, 0x00, 0x00, 0xee, 0xfe, 0x00, 0x00, 0x00};
+uint8_t v_asl[] = {0x00, 0x06, 0x16, 0x00, 0x00, 0x00, 0x0e, 0x1e, 0x00, 0x00, 0x00};
+uint8_t v_rol[] = {0x00, 0x26, 0x36, 0x00, 0x00, 0x00, 0x2e, 0x3e, 0x00, 0x00, 0x00};
+uint8_t v_lsr[] = {0x00, 0x46, 0x56, 0x00, 0x00, 0x00, 0x4e, 0x5e, 0x00, 0x00, 0x00};
+uint8_t v_ror[] = {0x00, 0x66, 0x76, 0x00, 0x00, 0x00, 0x6e, 0x7e, 0x00, 0x00, 0x00};
+uint8_t v_lda[] = {0xa9, 0xa5, 0xb5, 0x00, 0xa1, 0xb1, 0xad, 0xbd, 0xb9, 0x00, 0x00};
+uint8_t v_sta[] = {0x00, 0x85, 0x95, 0x00, 0x81, 0x91, 0x8d, 0x9d, 0x99, 0x00, 0x00};
+uint8_t v_ldx[] = {0xa2, 0xa6, 0x00, 0xb6, 0x00, 0x00, 0xae, 0x00, 0xbe, 0x00, 0x00};
+uint8_t v_stx[] = {0x00, 0x86, 0x00, 0x96, 0x00, 0x00, 0x8e, 0x00, 0x00, 0x00, 0x00};
+uint8_t v_ldy[] = {0xa0, 0xa4, 0xb4, 0x00, 0x00, 0x00, 0xac, 0xbc, 0x00, 0x00, 0x00};
+uint8_t v_sty[] = {0x00, 0x84, 0x94, 0x00, 0x00, 0x00, 0x8c, 0x00, 0x00, 0x00, 0x00};
+
 bool exec_ora(uint8_t ins, int8_t *res)
 {
     int8_t op;
-    if (get_operand(&op, &useless_addr, ins, new uint8_t[11]{0x09, 0x05, 0x15, 0x00, 0x01, 0x11, 0x0d, 0x1d, 0x19, 0x00, 0x00}))
+    if (get_operand(&op, &useless_addr, ins, v_ora))
     {
         *res = a |= op;
         return 1;
@@ -341,7 +358,7 @@ bool exec_ora(uint8_t ins, int8_t *res)
 bool exec_and(uint8_t ins, int8_t *res)
 {
     int8_t op;
-    if (get_operand(&op, &useless_addr, ins, new uint8_t[11]{0x29, 0x25, 0x35, 0x00, 0x21, 0x31, 0x2D, 0x3D, 0x39, 0x00, 0x00}))
+    if (get_operand(&op, &useless_addr, ins, v_and))
     {
         *res = a &= op;
         return 1;
@@ -352,7 +369,7 @@ bool exec_and(uint8_t ins, int8_t *res)
 bool exec_eor(uint8_t ins, int8_t *res)
 {
     int8_t op;
-    if (get_operand(&op, &useless_addr, ins, new uint8_t[11]{0x49, 0x45, 0x55, 0x00, 0x41, 0x51, 0x4D, 0x5D, 0x59, 0x00, 0x00}))
+    if (get_operand(&op, &useless_addr, ins, v_eor))
     {
         *res = a ^= op;
         return 1;
@@ -360,41 +377,34 @@ bool exec_eor(uint8_t ins, int8_t *res)
     return 0;
 }
 
-void setCV(int8_t a, int8_t b, bool sub)
+int8_t setCV(int8_t a, int8_t b, bool sub)
 {
+    int8_t res = a + (sub ? ~b : b) + fC;
     if (sub)
         b = -b;
     uint8_t ua = a, ub = b;
-    fC = ub > 255 - (ua + fC);
-    fV = (a > 0 && b > 0 && (int8_t)(a + b) < 0) || (a < 0 && b < 0 && (int8_t)(a + b) > 0);
+    fC = fC ? ((uint8_t)res <= ua) : ((uint8_t)res < ua);
+    fV = (ua ^ res) & (ub ^ res) & (1 << 7);
+    return res;
 }
 
 bool exec_adc(uint8_t ins, int8_t *res)
 {
     int8_t op;
-    if (get_operand(&op, &useless_addr, ins, new uint8_t[11]{0x69, 0x65, 0x75, 0x00, 0x61, 0x71, 0x6D, 0x7D, 0x79, 0x00, 0x00}))
+    if (get_operand(&op, &useless_addr, ins, v_adc))
     {
-        bool c_in = fC;
-        setCV(a, op, 0);
-        *res = a += op + c_in;
+        *res = setCV(a, op, 0);
         return 1;
     }
     return 0;
 }
 
-int8_t do_subtract(int8_t op0, int8_t op1)
-{
-    bool c_in = fC;
-    setCV(op0, op1, 1);
-    return op0 - op1 + c_in;
-}
-
 bool exec_sbc(uint8_t ins, int8_t *res)
 {
     int8_t op;
-    if (get_operand(&op, &useless_addr, ins, new uint8_t[11]{0xe9, 0xe5, 0xf5, 0x00, 0xe1, 0xf1, 0xeD, 0xfD, 0xf9, 0x00, 0x00}))
+    if (get_operand(&op, &useless_addr, ins, v_sbc))
     {
-        *res = a = do_subtract(a, op);
+        *res = setCV(a, op, 1);
         return 1;
     }
     return 0;
@@ -403,9 +413,9 @@ bool exec_sbc(uint8_t ins, int8_t *res)
 bool exec_cmp(uint8_t ins, int8_t *res)
 {
     int8_t op;
-    if (get_operand(&op, &useless_addr, ins, new uint8_t[11]{0xc9, 0xc5, 0xd5, 0x00, 0xc1, 0xd1, 0xcd, 0xdd, 0xd9, 0x00, 0x00}))
+    if (get_operand(&op, &useless_addr, ins, v_cmp))
     {
-        *res = do_subtract(a, op);
+        *res = a - op;
         fC = a >= op;
         return 1;
     }
@@ -415,11 +425,10 @@ bool exec_cmp(uint8_t ins, int8_t *res)
 bool exec_cpx(uint8_t ins, int8_t *res)
 {
     int8_t op;
-    if (get_operand(&op, &useless_addr, ins, new uint8_t[11]{0xe0, 0xe4, 0x00, 0x00, 0x00, 0x00, 0xec, 0x00, 0x00, 0x00, 0x00}))
+    if (get_operand(&op, &useless_addr, ins, v_cpx))
     {
-        *res = do_subtract(x, op);
+        *res = x - op;
         fC = x >= op;
-        cout << (int)(uint8_t)x << " - " << (int)(uint8_t)op << "=" << (int)(uint8_t)(*res) << endl;
         return 1;
     }
     return 0;
@@ -428,9 +437,9 @@ bool exec_cpx(uint8_t ins, int8_t *res)
 bool exec_cpy(uint8_t ins, int8_t *res)
 {
     int8_t op;
-    if (get_operand(&op, &useless_addr, ins, new uint8_t[11]{0xc0, 0xc4, 0x00, 0x00, 0x00, 0x00, 0xcc, 0x00, 0x00, 0x00, 0x00}))
+    if (get_operand(&op, &useless_addr, ins, v_cpy))
     {
-        *res = do_subtract(y, op);
+        *res = y - op;
         fC = y >= op;
         return 1;
     }
@@ -441,7 +450,7 @@ bool exec_dec(uint8_t ins, int8_t *res)
 {
     int8_t op;
     uint16_t op_addr;
-    if (get_operand(&op, &op_addr, ins, new uint8_t[11]{0x00, 0xc6, 0xd6, 0x00, 0x00, 0x00, 0xce, 0xde, 0x00, 0x00, 0x00}))
+    if (get_operand(&op, &op_addr, ins, v_dec))
     {
         write(op_addr, *res = op - 1);
         return 1;
@@ -453,7 +462,7 @@ bool exec_inc(uint8_t ins, int8_t *res)
 {
     int8_t op;
     uint16_t op_addr;
-    if (get_operand(&op, &op_addr, ins, new uint8_t[11]{0x00, 0xe6, 0xf6, 0x00, 0x00, 0x00, 0xee, 0xfe, 0x00, 0x00, 0x00}))
+    if (get_operand(&op, &op_addr, ins, v_inc))
     {
         write(op_addr, *res = op + 1);
         return 1;
@@ -465,7 +474,7 @@ bool exec_asl(uint8_t ins, int8_t *res)
 {
     int8_t op;
     uint16_t op_addr;
-    if (get_operand(&op, &op_addr, ins, new uint8_t[11]{0x00, 0x06, 0x16, 0x00, 0x00, 0x00, 0x0e, 0x1e, 0x00, 0x00, 0x00}))
+    if (get_operand(&op, &op_addr, ins, v_asl))
     {
         fC = op >> 7;
         write(op_addr, *res = op << 1);
@@ -478,7 +487,7 @@ bool exec_rol(uint8_t ins, int8_t *res)
 {
     int8_t op;
     uint16_t op_addr;
-    if (get_operand(&op, &op_addr, ins, new uint8_t[11]{0x00, 0x26, 0x36, 0x00, 0x00, 0x00, 0x2e, 0x3e, 0x00, 0x00, 0x00}))
+    if (get_operand(&op, &op_addr, ins, v_rol))
     {
         bool c_in = fC;
         fC = op >> 7;
@@ -492,7 +501,7 @@ bool exec_lsr(uint8_t ins, int8_t *res)
 {
     int8_t op;
     uint16_t op_addr;
-    if (get_operand(&op, &op_addr, ins, new uint8_t[11]{0x00, 0x46, 0x56, 0x00, 0x00, 0x00, 0x4e, 0x5e, 0x00, 0x00, 0x00}))
+    if (get_operand(&op, &op_addr, ins, v_lsr))
     {
         fC = op & 1;
         write(op_addr, *res = op >> 1);
@@ -505,7 +514,7 @@ bool exec_ror(uint8_t ins, int8_t *res)
 {
     int8_t op;
     uint16_t op_addr;
-    if (get_operand(&op, &op_addr, ins, new uint8_t[11]{0x00, 0x66, 0x76, 0x00, 0x00, 0x00, 0x6e, 0x7e, 0x00, 0x00, 0x00}))
+    if (get_operand(&op, &op_addr, ins, v_ror))
     {
         bool c_in = fC;
         fC = op & 1;
@@ -518,7 +527,7 @@ bool exec_ror(uint8_t ins, int8_t *res)
 bool exec_lda(uint8_t ins, int8_t *res)
 {
     int8_t op;
-    if (get_operand(&op, &useless_addr, ins, new uint8_t[11]{0xa9, 0xa5, 0xb5, 0x00, 0xa1, 0xb1, 0xad, 0xbd, 0xb9, 0x00, 0x00}))
+    if (get_operand(&op, &useless_addr, ins, v_lda))
     {
         *res = a = op;
         return 1;
@@ -530,7 +539,7 @@ bool exec_sta(uint8_t ins, int8_t *res)
 {
     int8_t op;
     uint16_t op_addr;
-    if (get_operand(&op, &op_addr, ins, new uint8_t[11]{0x00, 0x85, 0x95, 0x00, 0x81, 0x91, 0x8d, 0x9d, 0x99, 0x00, 0x00}))
+    if (get_operand(&op, &op_addr, ins, v_sta))
     {
         write(op_addr, a);
         return 1;
@@ -541,7 +550,7 @@ bool exec_sta(uint8_t ins, int8_t *res)
 bool exec_ldx(uint8_t ins, int8_t *res)
 {
     int8_t op;
-    if (get_operand(&op, &useless_addr, ins, new uint8_t[11]{0xa2, 0xa6, 0x00, 0xb6, 0x00, 0x00, 0xae, 0x00, 0xbe, 0x00, 0x00}))
+    if (get_operand(&op, &useless_addr, ins, v_ldx))
     {
         *res = x = op;
         return 1;
@@ -553,7 +562,7 @@ bool exec_stx(uint8_t ins, int8_t *res)
 {
     int8_t op;
     uint16_t op_addr;
-    if (get_operand(&op, &op_addr, ins, new uint8_t[11]{0x00, 0x86, 0x00, 0x96, 0x00, 0x00, 0x8e, 0x00, 0x00, 0x00, 0x00}))
+    if (get_operand(&op, &op_addr, ins, v_stx))
     {
         write(op_addr, x);
         return 1;
@@ -564,7 +573,7 @@ bool exec_stx(uint8_t ins, int8_t *res)
 bool exec_ldy(uint8_t ins, int8_t *res)
 {
     int8_t op;
-    if (get_operand(&op, &useless_addr, ins, new uint8_t[11]{0xa0, 0xa4, 0xb4, 0x00, 0x00, 0x00, 0xac, 0xbc, 0x00, 0x00, 0x00}))
+    if (get_operand(&op, &useless_addr, ins, v_ldy))
     {
         *res = y = op;
         return 1;
@@ -576,7 +585,7 @@ bool exec_sty(uint8_t ins, int8_t *res)
 {
     int8_t op;
     uint16_t op_addr;
-    if (get_operand(&op, &op_addr, ins, new uint8_t[11]{0x00, 0x84, 0x94, 0x00, 0x00, 0x00, 0x8c, 0x00, 0x00, 0x00, 0x00}))
+    if (get_operand(&op, &op_addr, ins, v_sty))
     {
         write(op_addr, y);
         return 1;
@@ -837,9 +846,8 @@ void exec_ins()
     }
     else if (ins == 0x24)
     {
-        int8_t *buf = ins_buf(2);
-        uint8_t op = (uint8_t)read(buf[1]);
-        free(buf);
+        load_ins_buf(2);
+        uint8_t op = (uint8_t)read(ins_buf[1]);
         fZ = (a & op) == 0;
         fN = op & (1 << 7);
         fV = op & (1 << 6);
@@ -848,9 +856,8 @@ void exec_ins()
     }
     else if (ins == 0x2c)
     {
-        int8_t *buf = ins_buf(3);
-        uint8_t op = (uint8_t)read(((uint16_t)(uint8_t)buf[2] << 8) | (uint16_t)(uint8_t)buf[1]);
-        free(buf);
+        load_ins_buf(3);
+        uint8_t op = (uint8_t)read(((uint16_t)(uint8_t)ins_buf[2] << 8) | (uint16_t)(uint8_t)ins_buf[1]);
         fZ = (a & op) == 0;
         fN = op & (1 << 7);
         fV = op & (1 << 6);
@@ -938,16 +945,16 @@ int main(int argc, char *argv[])
 
     cout << hex;
 
-    debug = 1;
+    debug = 0;
 
-    while (pc != 0xe556)
+    while (pc != 0xe5560)
     {
         exec_ins();
 
         if (fD)
             cout << "warn: fD active!" << endl;
         if (pc == 0xe716)
-            cout << (int)a << endl;
+            cout << a;
     }
 
     while (1)
