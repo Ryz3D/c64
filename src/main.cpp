@@ -8,7 +8,6 @@ TODO:
 - code injection into free ram
 - decimal arithmetic
 - cia registers / timers
-- actually test carry (subtraction), borrow?
 - keypress:
 $c5 $00-$3F: keyboard matrix code $40=none
 
@@ -397,7 +396,7 @@ bool exec_adc(uint8_t ins, int8_t *res)
     int8_t op;
     if (get_operand(&op, &useless_addr, ins, v_adc))
     {
-        *res = setCV(a, op, 0);
+        *res = a = setCV(a, op, 0);
         return 1;
     }
     return 0;
@@ -408,7 +407,7 @@ bool exec_sbc(uint8_t ins, int8_t *res)
     int8_t op;
     if (get_operand(&op, &useless_addr, ins, v_sbc))
     {
-        *res = setCV(a, op, 1);
+        *res = a = setCV(a, op, 1);
         return 1;
     }
     return 0;
@@ -856,7 +855,6 @@ void exec_ins()
         fN = op & (1 << 7);
         fV = op & (1 << 6);
         skipZN = 1;
-        pc++;
     }
     else if (ins == 0x2c)
     {
@@ -866,7 +864,6 @@ void exec_ins()
         fN = op & (1 << 7);
         fV = op & (1 << 6);
         skipZN = 1;
-        pc++;
     }
     else if (ins == 0x18)
     {
@@ -916,7 +913,10 @@ void exec_ins()
         pc++;
     }
     else
-        cout << "unknown instruction " << ins << endl;
+    {
+        cout << "unknown instruction " << (int)ins << endl;
+        debug = 1;
+    }
 
     if (!skipZN)
     {
@@ -951,7 +951,7 @@ int main(int argc, char *argv[])
 
     debug = 0;
 
-    while (pc != 0xa4080)
+    while (!debug)
     {
         exec_ins();
 
@@ -959,19 +959,7 @@ int main(int argc, char *argv[])
             cout << "warn: fD active!" << endl;
         if (pc == 0xe716)
         {
-            cout << a;
-            /*
-            cout << " ";
-            if (stack_pointer != 0xff)
-            {
-                cout << " stack(" << setfill('0') << setw(2) << (int)(uint8_t)stack_pointer << "): ";
-                for (int i = 0; i < 0xff - stack_pointer && i < 10; i++)
-                {
-                    cout << setfill('0') << setw(2) << (int)(uint8_t)read(0x1ff - i) << " ";
-                }
-            }
-            cout << endl;
-            */
+            cout << a << endl;
         }
     }
 
@@ -992,9 +980,9 @@ int main(int argc, char *argv[])
         if (stack_pointer != 0xff)
         {
             cout << " stack(" << setfill('0') << setw(2) << (int)(uint8_t)stack_pointer << "): ";
-            for (int i = 0; i < 0xff - stack_pointer && i < 10; i++)
+            for (int i = stack_pointer; i <= 0xff && i <= stack_pointer + 10; i++)
             {
-                cout << setfill('0') << setw(2) << (int)(uint8_t)read(0x1ff - i) << " ";
+                cout << setfill('0') << setw(2) << (int)(uint8_t)read(0x100 + i) << " ";
             }
         }
         cout << endl;
