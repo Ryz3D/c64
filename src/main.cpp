@@ -807,9 +807,10 @@ void exec_ins()
     }
     else if (ins == 0x00)
     {
-        s_push16(pc + 2); // TODO +3?
+        s_push16(pc + 2);
+        fB = 1;
         s_push((fN << 7) | (fV << 6) | (1 << 5) | (fB << 4) | (fD << 3) | (fI << 2) | (fZ << 1) | (fC << 0));
-        fB = fI = 1;
+        fI = 1;
         pc = read16(0xfffe);
         skipZN = 1;
     }
@@ -951,7 +952,7 @@ int main(int argc, char *argv[])
 
     debug = 0;
 
-    while (!debug)
+    while (pc != 0xfd5d)
     {
         exec_ins();
 
