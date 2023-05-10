@@ -50,6 +50,11 @@ void s_push16(uint16_t d)
 
 int8_t read(uint16_t addr)
 {
+    if (debug)
+    {
+        cout << "r (" << setfill('0') << setw(4) << pc << ") " << setw(4) << (int)addr << endl;
+    }
+
     uint16_t addr_off = addr;
     if (addr < 0x0100)
     {
@@ -385,9 +390,9 @@ int8_t setCV(int8_t a, int8_t b, bool sub)
     int8_t res = a + (sub ? ~b : b) + fC;
     if (sub)
         b = -b;
-    uint8_t ua = a, ub = b;
+    uint8_t ua = a;
     fC = fC ? ((uint8_t)res <= ua) : ((uint8_t)res < ua);
-    fV = (ua ^ res) & (ub ^ res) & (1 << 7);
+    fV = (ua ^ res) & (b ^ res) & (1 << 7);
     return res;
 }
 
@@ -622,24 +627,24 @@ void exec_ins()
         ;
     else if (ins == 0xca)
     {
-        res = x--;
+        res = --x;
         pc++;
     }
     else if (ins == 0x88)
     {
-        res = y--;
+        res = --y;
         pc++;
     }
     else if (exec_inc(ins, &res))
         ;
     else if (ins == 0xe8)
     {
-        res = x++;
+        res = ++x;
         pc++;
     }
     else if (ins == 0xc8)
     {
-        res = y++;
+        res = ++y;
         pc++;
     }
     else if (ins == 0x0a)
@@ -946,25 +951,30 @@ void irq()
 int main(int argc, char *argv[])
 {
     reset();
-    // pc = 0xc000;
+    // pc = 0xc000; // TODO: set after ready reached
 
     cout << hex;
 
-    debug = 0;
-
-    while (pc != 0xfd5d)
+    while (pc != 0xbe68)
     {
         exec_ins();
-
         if (fD)
             cout << "warn: fD active!" << endl;
         if (pc == 0xe716)
         {
-            cout << a << endl;
+            if (a == 0x0d)
+                cout << endl;
+            else
+                cout << a;
         }
     }
 
-    debug = 1;
+    cout << endl << endl;
+
+    cout << (int)(uint8_t)read(0x0065) << endl;
+    cout << (int)(uint8_t)read(0x0064) << endl;
+    cout << (int)(uint8_t)read(0x0063) << endl;
+    cout << (int)(uint8_t)read(0x0062) << endl;
 
     while (1)
     {
@@ -978,13 +988,10 @@ int main(int argc, char *argv[])
              << " fC=" << (int)fC
              << " fV=" << (int)fV;
 
-        if (stack_pointer != 0xff)
+        cout << " stack(" << setfill('0') << setw(2) << (int)(uint8_t)stack_pointer << "): ";
+        for (int i = stack_pointer; i <= 0xff && i <= stack_pointer + 10; i++)
         {
-            cout << " stack(" << setfill('0') << setw(2) << (int)(uint8_t)stack_pointer << "): ";
-            for (int i = stack_pointer; i <= 0xff && i <= stack_pointer + 10; i++)
-            {
-                cout << setfill('0') << setw(2) << (int)(uint8_t)read(0x100 + i) << " ";
-            }
+            cout << setfill('0') << setw(2) << (int)(uint8_t)read(0x100 + i) << " ";
         }
         cout << endl;
 
@@ -1002,7 +1009,9 @@ int main(int argc, char *argv[])
         cout << "^"
              << " (" << setfill('0') << setw(4) << pc << ")" << endl;
         getchar();
+        debug = 1;
         exec_ins();
+        debug = 0;
     }
 
     return 0;
