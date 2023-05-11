@@ -3,6 +3,7 @@
 #include <iostream>
 #include <iomanip>
 #include <vector>
+#include <conio.h>
 
 #include "basic.h"
 #include "characters.h"

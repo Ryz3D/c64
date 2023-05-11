@@ -955,7 +955,8 @@ int main(int argc, char *argv[])
 
     cout << hex;
 
-    while (pc != 0xbe420)
+    uint16_t kb_counter = 0;
+    while (pc != 0xe5d6)
     {
         exec_ins();
         if (fD)
@@ -967,6 +968,18 @@ int main(int argc, char *argv[])
             else
                 cout << a;
         }
+        if (kb_counter > 1000)
+        {
+            if (_kbhit())
+            {
+                write(0xc6, 0x01);
+                write(0xd0, 0x00);
+                write(0xd5, 0x01);
+                write(read16(0xd1), _getch());
+            }
+            kb_counter = 0;
+        }
+        kb_counter++;
     }
 
     while (1)
