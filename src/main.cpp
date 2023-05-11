@@ -5,18 +5,16 @@ using namespace std;
 /*
 
 TODO:
-- code injection into free ram
 - decimal arithmetic
-- cia registers / timers
-- keypress:
-$c5 $00-$3F: keyboard matrix code $40=none
+- cia registers / timers -> keyboard?
+- set pc = 0xc000 after ready reached
 
 */
 
 // $0001
 bool charen, hiram, loram;
 uint8_t stack_pointer;
-int8_t zeropage[256], stack[256], sysvar[512], screen[1024];
+int8_t zeropage[256], stack[256], sysvar[512], screen[1024], cia[512];
 int8_t basicram[38912];
 uint16_t pc;
 int8_t a, x, y;
@@ -120,6 +118,7 @@ int8_t read(uint16_t addr)
             {
                 addr_off -= 0xdc00;
                 // cia registers
+                return cia[addr_off];
             }
             else
             {
@@ -213,6 +212,7 @@ void write(uint16_t addr, int8_t d)
     {
         addr_off -= 0xdc00;
         // cia registers
+        cia[addr_off] = d;
     }
     else if (addr < 0xe000)
     {
@@ -938,50 +938,62 @@ void reset()
     pc = read16(0xfffc);
 }
 
-void nmi()
+int kb_counter = 0;
+
+void handle_io()
 {
-    // pc = read16(0xfffa);
-}
-
-void irq()
-{
-    // TODO: trigger correctly: flags, stack, maskable, pc increment? probably not
-}
-
-int main(int argc, char *argv[])
-{
-    reset();
-    // pc = 0xc000; // TODO: set after ready reached
-
-    cout << hex;
-
-    uint16_t kb_counter = 0;
-    while (pc != 0xe5d6)
+    if (pc == 0xe716)
     {
-        exec_ins();
-        if (fD)
-            cout << "warn: fD active!" << endl;
-        if (pc == 0xe716)
-        {
-            if (a == 0x0d)
-                cout << endl;
-            else
-                cout << a;
-        }
-        if (kb_counter > 1000)
-        {
-            if (_kbhit())
-            {
-                write(0xc6, 0x01);
-                write(0xd0, 0x00);
-                write(0xd5, 0x01);
-                write(read16(0xd1), _getch());
-            }
-            kb_counter = 0;
-        }
-        kb_counter++;
+        if (a == 0x0d)
+            cout << endl;
+        else
+            cout << a;
+    }
+    if (pc == 0xe5b4)
+    {
     }
 
+    if (kb_counter > 1000)
+    {
+        if (_kbhit())
+        {
+            if (read(0xc6) == 0)
+            {
+                int8_t a = _getch();
+                write(0xc6, 1);
+                // write(0xce, a);
+                write(0x0277, a);
+                // write(read16(0xd1) + read(0xd5), a);
+            }
+        }
+        kb_counter = 0;
+    }
+    kb_counter++;
+}
+
+void run()
+{
+    while (1)
+    {
+        if (fD)
+            cout << "warn: fD active!" << endl;
+        handle_io();
+        exec_ins();
+    }
+}
+
+void run_ram()
+{
+    while (pc != 0xa560)
+    {
+        handle_io();
+        exec_ins();
+    }
+    pc = 0xc000;
+}
+
+void run_debug()
+{
     while (1)
     {
         uint16_t rounded = pc - pc % 16;
@@ -1019,6 +1031,21 @@ int main(int argc, char *argv[])
         exec_ins();
         debug = 0;
     }
+}
+
+int main(int argc, char *argv[])
+{
+    reset();
+
+    cout << hex;
+
+    while (pc != 0xa5650)
+    {
+        handle_io();
+        exec_ins();
+    }
+
+    run_debug();
 
     return 0;
 }

@@ -2,7 +2,6 @@
 
 #include <iostream>
 #include <iomanip>
-#include <vector>
 #include <conio.h>
 
 #include "basic.h"
