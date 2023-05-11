@@ -29,8 +29,9 @@
             "command": "g++",
             "args": [
                 "-O3",
+                "-Wall",
                 "-o",
-                "c64_r.exe",
+                "c64.exe",
                 "-I",
                 "include",
                 "src\\*.cpp",

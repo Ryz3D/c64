@@ -390,9 +390,9 @@ int8_t setCV(int8_t a, int8_t b, bool sub)
     int8_t res = a + (sub ? ~b : b) + fC;
     if (sub)
         b = -b;
-    uint8_t ua = a;
-    fC = fC ? ((uint8_t)res <= ua) : ((uint8_t)res < ua);
-    fV = (ua ^ res) & (b ^ res) & (1 << 7);
+    uint8_t ua = a, ub = b, ur = res;
+    fC = fC ? (ur <= ua) : (ur < ua);
+    fV = (ua ^ ur) & (ub ^ ur) & (1 << 7);
     return res;
 }
 
@@ -485,7 +485,7 @@ bool exec_asl(uint8_t ins, int8_t *res)
     if (get_operand(&op, &op_addr, ins, v_asl))
     {
         fC = op >> 7;
-        write(op_addr, *res = op << 1);
+        write(op_addr, *res = (uint8_t)op << 1);
         return 1;
     }
     return 0;
@@ -499,7 +499,7 @@ bool exec_rol(uint8_t ins, int8_t *res)
     {
         bool c_in = fC;
         fC = op >> 7;
-        write(op_addr, *res = (op << 1) | c_in);
+        write(op_addr, *res = ((uint8_t)op << 1) | (uint8_t)c_in);
         return 1;
     }
     return 0;
@@ -512,7 +512,7 @@ bool exec_lsr(uint8_t ins, int8_t *res)
     if (get_operand(&op, &op_addr, ins, v_lsr))
     {
         fC = op & 1;
-        write(op_addr, *res = op >> 1);
+        write(op_addr, *res = (uint8_t)op >> 1);
         return 1;
     }
     return 0;
@@ -526,7 +526,7 @@ bool exec_ror(uint8_t ins, int8_t *res)
     {
         bool c_in = fC;
         fC = op & 1;
-        write(op_addr, *res = (op >> 1) | (c_in << 7));
+        write(op_addr, *res = ((uint8_t)op >> 1) | ((uint8_t)c_in << 7));
         return 1;
     }
     return 0;
@@ -649,8 +649,8 @@ void exec_ins()
     }
     else if (ins == 0x0a)
     {
-        fC = a >> 7;
-        res = a = a << 1;
+        fC = (uint8_t)a >> 7;
+        res = a = (uint8_t)a << 1;
         pc++;
     }
     else if (exec_asl(ins, &res))
@@ -658,16 +658,16 @@ void exec_ins()
     else if (ins == 0x2a)
     {
         bool c_in = fC;
-        fC = a >> 7;
-        res = a = (a << 1) | c_in;
+        fC = (uint8_t)a >> 7;
+        res = a = ((uint8_t)a << 1) | (uint8_t)c_in;
         pc++;
     }
     else if (exec_rol(ins, &res))
         ;
     else if (ins == 0x4a)
     {
-        fC = a & 1;
-        res = a = a >> 1;
+        fC = (uint8_t)a & 1;
+        res = a = (uint8_t)a >> 1;
         pc++;
     }
     else if (exec_lsr(ins, &res))
@@ -675,8 +675,8 @@ void exec_ins()
     else if (ins == 0x6a)
     {
         bool c_in = fC;
-        fC = a & 1;
-        res = a = (a >> 1) | (c_in << 7);
+        fC = (uint8_t)a & 1;
+        res = a = ((uint8_t)a >> 1) | ((uint8_t)c_in << 7);
         pc++;
     }
     else if (exec_ror(ins, &res))
@@ -812,7 +812,7 @@ void exec_ins()
     }
     else if (ins == 0x00)
     {
-        s_push16(pc + 2);
+        s_push16(pc + 1);
         fB = 1;
         s_push((fN << 7) | (fV << 6) | (1 << 5) | (fB << 4) | (fD << 3) | (fI << 2) | (fZ << 1) | (fC << 0));
         fI = 1;
@@ -829,18 +829,18 @@ void exec_ins()
         fI = status & (1 << 2);
         fZ = status & (1 << 1);
         fC = status & (1 << 0);
-        pc = s_pop16();
+        pc = s_pop16() + 1;
         skipZN = 1;
     }
     else if (ins == 0x20)
     {
-        s_push16(pc + 3);
+        s_push16(pc + 2);
         pc = read16(pc + 1);
         skipZN = 1;
     }
     else if (ins == 0x60)
     {
-        pc = s_pop16();
+        pc = s_pop16() + 1;
         skipZN = 1;
     }
     else if (ins == 0x4c)
@@ -955,7 +955,7 @@ int main(int argc, char *argv[])
 
     cout << hex;
 
-    while (pc != 0xbe68)
+    while (pc != 0xbe420)
     {
         exec_ins();
         if (fD)
@@ -968,13 +968,6 @@ int main(int argc, char *argv[])
                 cout << a;
         }
     }
-
-    cout << endl << endl;
-
-    cout << (int)(uint8_t)read(0x0065) << endl;
-    cout << (int)(uint8_t)read(0x0064) << endl;
-    cout << (int)(uint8_t)read(0x0063) << endl;
-    cout << (int)(uint8_t)read(0x0062) << endl;
 
     while (1)
     {
