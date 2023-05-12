@@ -21,7 +21,7 @@ int8_t a, x, y;
 bool fN, fV, fB, fD, fI, fZ, fC;
 int8_t ins_buf[3];
 
-bool debug = 0;
+bool running = 1;
 
 uint8_t s_pop()
 {
@@ -48,11 +48,6 @@ void s_push16(uint16_t d)
 
 int8_t read(uint16_t addr)
 {
-    if (debug)
-    {
-        cout << "r (" << setfill('0') << setw(4) << pc << ") " << setw(4) << (int)addr << endl;
-    }
-
     uint16_t addr_off = addr;
     if (addr < 0x0100)
     {
@@ -149,12 +144,6 @@ int8_t read(uint16_t addr)
 
 void write(uint16_t addr, int8_t d)
 {
-    if (debug)
-    {
-        cout << "w (" << setfill('0') << setw(4) << pc << ") "
-             << setw(4) << (int)addr << " <- " << setw(2) << (int)(uint8_t)d << endl;
-    }
-
     uint16_t addr_off = addr;
     if (addr < 0x0100)
     {
@@ -932,8 +921,8 @@ void exec_ins()
     }
     else
     {
-        cout << "unknown instruction " << (int)ins << endl;
-        debug = 1;
+        cout << "Invalid instruction $" << setfill('0') << setw(2) << (int)ins << " at $" << setw(4) << (int)pc << endl;
+        running = 0;
     }
 
     if (!skipZN)
@@ -958,9 +947,9 @@ void handle_io()
     {
         uint8_t ua = a;
         if (ua == 0x0d)
-            cout << endl;
+            putchar('\n');
         else if (ua != 0x1d && ua != 0x93 && ua != 0x0a)
-            cout << a;
+            putchar(a);
     }
     else if (pc == 0xa57c)
     {
@@ -990,7 +979,7 @@ void handle_io()
 
 void run(uint16_t breakpoint = 0)
 {
-    while (pc != breakpoint)
+    while (running && pc != breakpoint)
     {
         if (fD)
             cout << "warn: fD active!" << endl;
@@ -1034,9 +1023,7 @@ void run_debug()
         cout << "^"
              << " (" << setfill('0') << setw(4) << pc << ")" << endl;
         getchar();
-        debug = 1;
         exec_ins();
-        debug = 0;
     }
 }
 
