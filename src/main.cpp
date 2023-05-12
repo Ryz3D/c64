@@ -14,7 +14,7 @@ TODO:
 // $0001
 bool charen, hiram, loram;
 uint8_t stack_pointer;
-int8_t zeropage[256], stack[256], sysvar[512], screen[1024], cia[512];
+int8_t zeropage[256], stack[256], sysvar[512], screen[1024], cia1[16], cia2[16];
 int8_t basicram[38912];
 uint16_t pc;
 int8_t a, x, y;
@@ -114,11 +114,17 @@ int8_t read(uint16_t addr)
                 addr_off -= 0xd800;
                 // color ram
             }
-            else if (addr < 0xde00)
+            else if (addr < 0xdd00)
             {
                 addr_off -= 0xdc00;
-                // cia registers
-                return cia[addr_off];
+                // cia1 registers
+                return cia1[addr_off % 16];
+            }
+            else if (addr < 0xde00)
+            {
+                addr_off -= 0xdd00;
+                // cia2 registers
+                return cia2[addr_off % 16];
             }
             else
             {
@@ -208,11 +214,17 @@ void write(uint16_t addr, int8_t d)
         addr_off -= 0xd800;
         // color ram
     }
-    else if (addr < 0xde00)
+    else if (addr < 0xdd00)
     {
         addr_off -= 0xdc00;
-        // cia registers
-        cia[addr_off] = d;
+        // cia1 registers
+        cia1[addr_off % 16] = d;
+    }
+    else if (addr < 0xde00)
+    {
+        addr_off -= 0xdd00;
+        // cia2 registers
+        cia2[addr_off % 16] = d;
     }
     else if (addr < 0xe000)
     {
@@ -944,13 +956,21 @@ void handle_io()
 {
     if (pc == 0xe716)
     {
-        if (a == 0x0d)
+        uint8_t ua = a;
+        if (ua == 0x0d)
             cout << endl;
-        else
+        else if (ua != 0x1d && ua != 0x93 && ua != 0x0a)
             cout << a;
     }
-    if (pc == 0xe5b4)
+    else if (pc == 0xa57c)
     {
+        for (uint8_t chr = 1, i = 0; chr; i++)
+        {
+            chr = read(0x200 + i) & ~(1 << 7);
+            if (chr > 0 && chr < 0x20)
+                chr |= 1 << 6;
+            write(0x200 + i, chr);
+        }
     }
 
     if (kb_counter > 1000)
@@ -959,11 +979,8 @@ void handle_io()
         {
             if (read(0xc6) == 0)
             {
-                int8_t a = _getch();
                 write(0xc6, 1);
-                // write(0xce, a);
-                write(0x0277, a);
-                // write(read16(0xd1) + read(0xd5), a);
+                write(0x277, _getch());
             }
         }
         kb_counter = 0;
@@ -971,25 +988,15 @@ void handle_io()
     kb_counter++;
 }
 
-void run()
+void run(uint16_t breakpoint = 0)
 {
-    while (1)
+    while (pc != breakpoint)
     {
         if (fD)
             cout << "warn: fD active!" << endl;
         handle_io();
         exec_ins();
     }
-}
-
-void run_ram()
-{
-    while (pc != 0xa560)
-    {
-        handle_io();
-        exec_ins();
-    }
-    pc = 0xc000;
 }
 
 void run_debug()
@@ -1035,17 +1042,8 @@ void run_debug()
 
 int main(int argc, char *argv[])
 {
-    reset();
-
     cout << hex;
-
-    while (pc != 0xa5650)
-    {
-        handle_io();
-        exec_ins();
-    }
-
-    run_debug();
-
+    reset();
+    run();
     return 0;
 }
