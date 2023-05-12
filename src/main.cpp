@@ -355,7 +355,7 @@ uint8_t v_sty[] = {0x00, 0x84, 0x94, 0x00, 0x00, 0x00, 0x8c, 0x00, 0x00, 0x00, 0
 
 bool exec_ora(uint8_t ins, int8_t *res)
 {
-    int8_t op;
+    int8_t op = 0;
     if (get_operand(&op, &useless_addr, ins, v_ora))
     {
         *res = a |= op;
@@ -366,7 +366,7 @@ bool exec_ora(uint8_t ins, int8_t *res)
 
 bool exec_and(uint8_t ins, int8_t *res)
 {
-    int8_t op;
+    int8_t op = 0;
     if (get_operand(&op, &useless_addr, ins, v_and))
     {
         *res = a &= op;
@@ -377,7 +377,7 @@ bool exec_and(uint8_t ins, int8_t *res)
 
 bool exec_eor(uint8_t ins, int8_t *res)
 {
-    int8_t op;
+    int8_t op = 0;
     if (get_operand(&op, &useless_addr, ins, v_eor))
     {
         *res = a ^= op;
@@ -399,7 +399,7 @@ int8_t setCV(int8_t a, int8_t b, bool sub)
 
 bool exec_adc(uint8_t ins, int8_t *res)
 {
-    int8_t op;
+    int8_t op = 0;
     if (get_operand(&op, &useless_addr, ins, v_adc))
     {
         *res = a = setCV(a, op, 0);
@@ -410,7 +410,7 @@ bool exec_adc(uint8_t ins, int8_t *res)
 
 bool exec_sbc(uint8_t ins, int8_t *res)
 {
-    int8_t op;
+    int8_t op = 0;
     if (get_operand(&op, &useless_addr, ins, v_sbc))
     {
         *res = a = setCV(a, op, 1);
@@ -421,7 +421,7 @@ bool exec_sbc(uint8_t ins, int8_t *res)
 
 bool exec_cmp(uint8_t ins, int8_t *res)
 {
-    int8_t op;
+    int8_t op = 0;
     if (get_operand(&op, &useless_addr, ins, v_cmp))
     {
         *res = a - op;
@@ -433,7 +433,7 @@ bool exec_cmp(uint8_t ins, int8_t *res)
 
 bool exec_cpx(uint8_t ins, int8_t *res)
 {
-    int8_t op;
+    int8_t op = 0;
     if (get_operand(&op, &useless_addr, ins, v_cpx))
     {
         *res = x - op;
@@ -445,7 +445,7 @@ bool exec_cpx(uint8_t ins, int8_t *res)
 
 bool exec_cpy(uint8_t ins, int8_t *res)
 {
-    int8_t op;
+    int8_t op = 0;
     if (get_operand(&op, &useless_addr, ins, v_cpy))
     {
         *res = y - op;
@@ -457,8 +457,8 @@ bool exec_cpy(uint8_t ins, int8_t *res)
 
 bool exec_dec(uint8_t ins, int8_t *res)
 {
-    int8_t op;
-    uint16_t op_addr;
+    int8_t op = 0;
+    uint16_t op_addr = 0;
     if (get_operand(&op, &op_addr, ins, v_dec))
     {
         write(op_addr, *res = op - 1);
@@ -469,8 +469,8 @@ bool exec_dec(uint8_t ins, int8_t *res)
 
 bool exec_inc(uint8_t ins, int8_t *res)
 {
-    int8_t op;
-    uint16_t op_addr;
+    int8_t op = 0;
+    uint16_t op_addr = 0;
     if (get_operand(&op, &op_addr, ins, v_inc))
     {
         write(op_addr, *res = op + 1);
@@ -481,8 +481,8 @@ bool exec_inc(uint8_t ins, int8_t *res)
 
 bool exec_asl(uint8_t ins, int8_t *res)
 {
-    int8_t op;
-    uint16_t op_addr;
+    int8_t op = 0;
+    uint16_t op_addr = 0;
     if (get_operand(&op, &op_addr, ins, v_asl))
     {
         fC = op >> 7;
@@ -494,8 +494,8 @@ bool exec_asl(uint8_t ins, int8_t *res)
 
 bool exec_rol(uint8_t ins, int8_t *res)
 {
-    int8_t op;
-    uint16_t op_addr;
+    int8_t op = 0;
+    uint16_t op_addr = 0;
     if (get_operand(&op, &op_addr, ins, v_rol))
     {
         bool c_in = fC;
@@ -508,8 +508,8 @@ bool exec_rol(uint8_t ins, int8_t *res)
 
 bool exec_lsr(uint8_t ins, int8_t *res)
 {
-    int8_t op;
-    uint16_t op_addr;
+    int8_t op = 0;
+    uint16_t op_addr = 0;
     if (get_operand(&op, &op_addr, ins, v_lsr))
     {
         fC = op & 1;
@@ -521,8 +521,8 @@ bool exec_lsr(uint8_t ins, int8_t *res)
 
 bool exec_ror(uint8_t ins, int8_t *res)
 {
-    int8_t op;
-    uint16_t op_addr;
+    int8_t op = 0;
+    uint16_t op_addr = 0;
     if (get_operand(&op, &op_addr, ins, v_ror))
     {
         bool c_in = fC;
@@ -535,7 +535,7 @@ bool exec_ror(uint8_t ins, int8_t *res)
 
 bool exec_lda(uint8_t ins, int8_t *res)
 {
-    int8_t op;
+    int8_t op = 0;
     if (get_operand(&op, &useless_addr, ins, v_lda))
     {
         *res = a = op;
@@ -546,8 +546,8 @@ bool exec_lda(uint8_t ins, int8_t *res)
 
 bool exec_sta(uint8_t ins, int8_t *res)
 {
-    int8_t op;
-    uint16_t op_addr;
+    int8_t op = 0;
+    uint16_t op_addr = 0;
     if (get_operand(&op, &op_addr, ins, v_sta))
     {
         write(op_addr, a);
@@ -558,7 +558,7 @@ bool exec_sta(uint8_t ins, int8_t *res)
 
 bool exec_ldx(uint8_t ins, int8_t *res)
 {
-    int8_t op;
+    int8_t op = 0;
     if (get_operand(&op, &useless_addr, ins, v_ldx))
     {
         *res = x = op;
@@ -569,8 +569,8 @@ bool exec_ldx(uint8_t ins, int8_t *res)
 
 bool exec_stx(uint8_t ins, int8_t *res)
 {
-    int8_t op;
-    uint16_t op_addr;
+    int8_t op = 0;
+    uint16_t op_addr = 0;
     if (get_operand(&op, &op_addr, ins, v_stx))
     {
         write(op_addr, x);
@@ -581,7 +581,7 @@ bool exec_stx(uint8_t ins, int8_t *res)
 
 bool exec_ldy(uint8_t ins, int8_t *res)
 {
-    int8_t op;
+    int8_t op = 0;
     if (get_operand(&op, &useless_addr, ins, v_ldy))
     {
         *res = y = op;
@@ -592,8 +592,8 @@ bool exec_ldy(uint8_t ins, int8_t *res)
 
 bool exec_sty(uint8_t ins, int8_t *res)
 {
-    int8_t op;
-    uint16_t op_addr;
+    int8_t op = 0;
+    uint16_t op_addr = 0;
     if (get_operand(&op, &op_addr, ins, v_sty))
     {
         write(op_addr, y);
