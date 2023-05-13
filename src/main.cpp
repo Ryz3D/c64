@@ -1027,10 +1027,33 @@ void run_debug()
     }
 }
 
+float convfac(bool alt)
+{
+    int8_t e = read(alt ? 0x69 : 0x61) - 0x80;
+    uint8_t m1 = read(alt ? 0x6a : 0x62);
+    uint8_t m2 = read(alt ? 0x6b : 0x63);
+    uint8_t m3 = read(alt ? 0x6c : 0x64);
+    uint8_t m4 = read(alt ? 0x6d : 0x65);
+    float f = pow(2, e) * (m1 * pow(2, -8) + m2 * pow(2, -16) + m3 * pow(2, -24) + m4 * pow(2, -32));
+    return f * (m1 & 0x80 ? -1 : 1);
+}
+
 int main(int argc, char *argv[])
 {
     cout << hex;
     reset();
-    run();
+
+    run(0xb86a);
+    exec_ins();
+    while (1)
+    {
+        run(0xb86a);
+        cout << convfac(0) << " + " << convfac(1) << endl;
+        run(0xbd7b);
+        cout << " = " << convfac(0) << endl;
+    }
+
+    run_debug();
+
     return 0;
 }
