@@ -6,8 +6,7 @@ using namespace std;
 
 TODO:
 - decimal arithmetic
-- cia registers / timers -> keyboard?
-- set pc = 0xc000 after ready reached
+- cia timer
 
 */
 
@@ -988,10 +987,13 @@ void run(uint16_t breakpoint = 0)
     }
 }
 
+float convfac(bool alt);
+
 void run_debug()
 {
     while (1)
     {
+        cout << "fac: " << convfac(0) << endl;
         uint16_t rounded = pc - pc % 16;
         cout << setfill('0') << setw(4) << rounded << "\t"
              << "a=" << setfill('0') << setw(2) << (int)(uint8_t)a
@@ -1034,26 +1036,26 @@ float convfac(bool alt)
     uint8_t m2 = read(alt ? 0x6b : 0x63);
     uint8_t m3 = read(alt ? 0x6c : 0x64);
     uint8_t m4 = read(alt ? 0x6d : 0x65);
+    uint8_t sgn = read(alt ? 0x6e : 0x66);
     float f = pow(2, e) * (m1 * pow(2, -8) + m2 * pow(2, -16) + m3 * pow(2, -24) + m4 * pow(2, -32));
-    return f * (m1 & 0x80 ? -1 : 1);
+    return f * (sgn & 0x80 ? -1 : 1);
 }
 
 int main(int argc, char *argv[])
 {
     cout << hex;
-    reset();
 
-    run(0xb86a);
+    reset();
+    run(0xb8d2);
     exec_ins();
     while (1)
     {
-        run(0xb86a);
-        cout << convfac(0) << " + " << convfac(1) << endl;
-        run(0xbd7b);
+        run(0xbb12);
+        cout << convfac(1) << " / " << convfac(0) << endl;
+        run(0xbb9f);
         cout << " = " << convfac(0) << endl;
+        exec_ins();
     }
-
-    run_debug();
 
     return 0;
 }
