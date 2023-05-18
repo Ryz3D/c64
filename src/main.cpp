@@ -940,6 +940,8 @@ void reset()
 
 int kb_counter = 0;
 
+string buf = "PPRINT 3.0\r";
+
 void handle_io()
 {
     if (pc == 0xe716)
@@ -971,6 +973,15 @@ void handle_io()
                 write(0x277, _getch());
             }
         }
+        else if (buf.length() > 0)
+        {
+            if (read(0xc6) == 0)
+            {
+                write(0xc6, 1);
+                write(0x277, buf[0]);
+                buf.erase(buf.begin());
+            }
+        }
         kb_counter = 0;
     }
     kb_counter++;
@@ -987,13 +998,12 @@ void run(uint16_t breakpoint = 0)
     }
 }
 
-float convfac(bool alt);
+float fac1(), fac2(), fac_temp();
 
 void run_debug()
 {
     while (1)
     {
-        cout << "fac: " << convfac(0) << endl;
         uint16_t rounded = pc - pc % 16;
         cout << setfill('0') << setw(4) << rounded << "\t"
              << "a=" << setfill('0') << setw(2) << (int)(uint8_t)a
@@ -1029,16 +1039,28 @@ void run_debug()
     }
 }
 
-float convfac(bool alt)
+float convfac(int8_t e, int8_t m1, int8_t m2, int8_t m3, int8_t m4, int8_t sgn)
 {
-    int8_t e = read(alt ? 0x69 : 0x61) - 0x80;
-    uint8_t m1 = read(alt ? 0x6a : 0x62);
-    uint8_t m2 = read(alt ? 0x6b : 0x63);
-    uint8_t m3 = read(alt ? 0x6c : 0x64);
-    uint8_t m4 = read(alt ? 0x6d : 0x65);
-    uint8_t sgn = read(alt ? 0x6e : 0x66);
-    float f = pow(2, e) * (m1 * pow(2, -8) + m2 * pow(2, -16) + m3 * pow(2, -24) + m4 * pow(2, -32));
-    return f * (sgn & 0x80 ? -1 : 1);
+    double fm1 = (double)(uint8_t)m1 * pow(2, -8);
+    double fm2 = (double)(uint8_t)m2 * pow(2, -16);
+    double fm3 = (double)(uint8_t)m3 * pow(2, -24);
+    double fm4 = (double)(uint8_t)m4 * pow(2, -32);
+    return ((uint8_t)sgn & 0x80 ? -1.0 : 1.0) * pow(2, (int)e - (int)0x80) * (m1 + m2 + m3 + m4);
+}
+
+float fac1()
+{
+    return convfac(read(0x61), read(0x62), read(0x63), read(0x64), read(0x65), read(0x66));
+}
+
+float fac2()
+{
+    return convfac(read(0x69), read(0x6a), read(0x6b), read(0x6c), read(0x6d), read(0x6e));
+}
+
+float fac_temp()
+{
+    return convfac(read(0x61), read(0x26), read(0x27), read(0x28), read(0x29), read(0x66));
 }
 
 int main(int argc, char *argv[])
@@ -1051,10 +1073,14 @@ int main(int argc, char *argv[])
     while (1)
     {
         run(0xbb12);
-        cout << convfac(1) << " / " << convfac(0) << endl;
+        for (int i = 0x61; i <= 0x65; i++)
+            cout << (int)i << ": " << (int)(uint8_t)read(i) << " ";
+        cout << endl;
+        cout << "fac1: " << fac1() << " fac2: " << fac2() << " fac_temp: " << fac_temp() << endl;
+        cout << "exp1: " << (int)(uint8_t)read(0x61) << " exp2: " << (int)(uint8_t)read(0x69) << endl;
         run(0xbb9f);
-        cout << " = " << convfac(0) << endl;
-        exec_ins();
+        cout << "fac1: " << fac1() << " fac2: " << fac2() << " fac_temp: " << fac_temp() << endl;
+        cout << "exp1: " << (int)(uint8_t)read(0x61) << " exp2: " << (int)(uint8_t)read(0x69) << endl;
     }
 
     return 0;
