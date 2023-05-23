@@ -258,21 +258,21 @@ bool get_operand(int8_t *op, uint16_t *op_addr, uint8_t ins, uint8_t *variants)
     }
     else if (ins == variants[2])
     {
-        // zeropage x
+        // zeropage indexed x
         load_ins_buf(2);
-        *op_addr = (uint8_t)ins_buf[1] + (uint8_t)x;
+        *op_addr = (uint8_t)ins_buf[1] + x;
         *op = read(*op_addr);
     }
     else if (ins == variants[3])
     {
-        // zeropage y
+        // zeropage indexed y
         load_ins_buf(2);
-        *op_addr = (uint8_t)ins_buf[1] + (uint8_t)y;
+        *op_addr = (uint8_t)ins_buf[1] + y;
         *op = read(*op_addr);
     }
     else if (ins == variants[4])
     {
-        // indirect zeropage x
+        // zeropage indexed indirect x
         load_ins_buf(2);
         uint8_t op_addr_addr = (uint8_t)ins_buf[1] + x;
         *op_addr = read16(op_addr_addr);
@@ -280,10 +280,10 @@ bool get_operand(int8_t *op, uint16_t *op_addr, uint8_t ins, uint8_t *variants)
     }
     else if (ins == variants[5])
     {
-        // indirect zeropage y
+        // zeropage indirect indexed y
         load_ins_buf(2);
         uint8_t op_addr_addr = (uint8_t)ins_buf[1];
-        *op_addr = read16(op_addr_addr) + (uint8_t)y;
+        *op_addr = read16(op_addr_addr) + y;
         *op = read(*op_addr);
     }
     else if (ins == variants[6])
@@ -940,8 +940,6 @@ void reset()
 
 int kb_counter = 0;
 
-string buf = "PPRINT 3.0\r";
-
 void handle_io()
 {
     if (pc == 0xe716)
@@ -971,15 +969,6 @@ void handle_io()
             {
                 write(0xc6, 1);
                 write(0x277, _getch());
-            }
-        }
-        else if (buf.length() > 0)
-        {
-            if (read(0xc6) == 0)
-            {
-                write(0xc6, 1);
-                write(0x277, buf[0]);
-                buf.erase(buf.begin());
             }
         }
         kb_counter = 0;
@@ -1041,11 +1030,13 @@ void run_debug()
 
 float convfac(int8_t e, int8_t m1, int8_t m2, int8_t m3, int8_t m4, int8_t sgn)
 {
-    double fm1 = (double)(uint8_t)m1 * pow(2, -8);
-    double fm2 = (double)(uint8_t)m2 * pow(2, -16);
-    double fm3 = (double)(uint8_t)m3 * pow(2, -24);
-    double fm4 = (double)(uint8_t)m4 * pow(2, -32);
-    return ((uint8_t)sgn & 0x80 ? -1.0 : 1.0) * pow(2, (int)e - (int)0x80) * (m1 + m2 + m3 + m4);
+    int e_off = (int)(uint8_t)e - 0x80;
+    double fm1 = (double)(uint8_t)m1 * pow(2, -8 + e_off);
+    double fm2 = (double)(uint8_t)m2 * pow(2, -16 + e_off);
+    double fm3 = (double)(uint8_t)m3 * pow(2, -24 + e_off);
+    double fm4 = (double)(uint8_t)m4 * pow(2, -32 + e_off);
+    double res = fm1 + fm2 + fm3 + fm4;
+    return (uint8_t)sgn & 0x80 ? -res : res;
 }
 
 float fac1()
@@ -1068,20 +1059,7 @@ int main(int argc, char *argv[])
     cout << hex;
 
     reset();
-    run(0xb8d2);
-    exec_ins();
-    while (1)
-    {
-        run(0xbb12);
-        for (int i = 0x61; i <= 0x65; i++)
-            cout << (int)i << ": " << (int)(uint8_t)read(i) << " ";
-        cout << endl;
-        cout << "fac1: " << fac1() << " fac2: " << fac2() << " fac_temp: " << fac_temp() << endl;
-        cout << "exp1: " << (int)(uint8_t)read(0x61) << " exp2: " << (int)(uint8_t)read(0x69) << endl;
-        run(0xbb9f);
-        cout << "fac1: " << fac1() << " fac2: " << fac2() << " fac_temp: " << fac_temp() << endl;
-        cout << "exp1: " << (int)(uint8_t)read(0x61) << " exp2: " << (int)(uint8_t)read(0x69) << endl;
-    }
+    run();
 
     return 0;
 }
