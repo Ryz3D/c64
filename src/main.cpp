@@ -953,6 +953,8 @@ void handle_io()
             ;
         if (a == 0xa)
             a = 0xd;
+        if (a >= 'a' && a <= 'z')
+            a &= ~(1 << 5);
         pc = 0xe117;
     }
 }
