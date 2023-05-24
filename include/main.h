@@ -2,7 +2,6 @@
 
 #include <iostream>
 #include <iomanip>
-#include <conio.h>
 
 #include "basic.h"
 #include "characters.h"

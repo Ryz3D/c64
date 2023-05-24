@@ -949,10 +949,10 @@ void handle_io()
     }
     else if (pc == 0xe112)
     {
-        while (!_kbhit())
+        while (!(a = getchar()))
             ;
-        a = _getch();
-        putchar(a);
+        if (a == 0xa)
+            a = 0xd;
         pc = 0xe117;
     }
 }
