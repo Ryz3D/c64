@@ -740,7 +740,6 @@ void exec_ins()
         uint8_t status = s_pop();
         fN = status & (1 << 7);
         fV = status & (1 << 6);
-        // fB = status & (1 << 4);
         fD = status & (1 << 3);
         fI = status & (1 << 2);
         fZ = status & (1 << 1);
@@ -938,8 +937,6 @@ void reset()
     pc = read16(0xfffc);
 }
 
-int kb_counter = 0;
-
 void handle_io()
 {
     if (pc == 0xe716)
@@ -950,30 +947,14 @@ void handle_io()
         else if (ua != 0x1d && ua != 0x93 && ua != 0x0a)
             putchar(a);
     }
-    else if (pc == 0xa57c)
+    else if (pc == 0xe112)
     {
-        for (uint8_t chr = 1, i = 0; chr; i++)
-        {
-            chr = read(0x200 + i) & ~(1 << 7);
-            if (chr > 0 && chr < 0x20)
-                chr |= 1 << 6;
-            write(0x200 + i, chr);
-        }
+        while (!_kbhit())
+            ;
+        a = _getch();
+        putchar(a);
+        pc = 0xe117;
     }
-
-    if (kb_counter > 1000)
-    {
-        if (_kbhit())
-        {
-            if (read(0xc6) == 0)
-            {
-                write(0xc6, 1);
-                write(0x277, _getch());
-            }
-        }
-        kb_counter = 0;
-    }
-    kb_counter++;
 }
 
 void run(uint16_t breakpoint = 0)
@@ -986,8 +967,6 @@ void run(uint16_t breakpoint = 0)
         exec_ins();
     }
 }
-
-float fac1(), fac2(), fac_temp();
 
 void run_debug()
 {
@@ -1028,38 +1007,13 @@ void run_debug()
     }
 }
 
-float convfac(int8_t e, int8_t m1, int8_t m2, int8_t m3, int8_t m4, int8_t sgn)
-{
-    int e_off = (int)(uint8_t)e - 0x80;
-    double fm1 = (double)(uint8_t)m1 * pow(2, -8 + e_off);
-    double fm2 = (double)(uint8_t)m2 * pow(2, -16 + e_off);
-    double fm3 = (double)(uint8_t)m3 * pow(2, -24 + e_off);
-    double fm4 = (double)(uint8_t)m4 * pow(2, -32 + e_off);
-    double res = fm1 + fm2 + fm3 + fm4;
-    return (uint8_t)sgn & 0x80 ? -res : res;
-}
-
-float fac1()
-{
-    return convfac(read(0x61), read(0x62), read(0x63), read(0x64), read(0x65), read(0x66));
-}
-
-float fac2()
-{
-    return convfac(read(0x69), read(0x6a), read(0x6b), read(0x6c), read(0x6d), read(0x6e));
-}
-
-float fac_temp()
-{
-    return convfac(read(0x61), read(0x26), read(0x27), read(0x28), read(0x29), read(0x66));
-}
-
 int main(int argc, char *argv[])
 {
     cout << hex;
 
     reset();
-    run();
+    run(0xc000);
+    run_debug();
 
     return 0;
 }
