@@ -11,13 +11,13 @@ TODO:
 */
 
 // $0001
-bool charen, hiram, loram;
-uint8_t stack_pointer;
 int8_t zeropage[256], stack[256], sysvar[512], screen[1024], cia1[16], cia2[16];
 int8_t basicram[38912];
+bool charen, hiram, loram;
 uint16_t pc;
 int8_t a, x, y;
 bool fN, fV, fB, fD, fI, fZ, fC;
+uint8_t stack_pointer;
 int8_t ins_buf[3];
 
 bool running = 1;
@@ -942,7 +942,7 @@ void handle_io()
     if (pc == 0xe716)
     {
         uint8_t ua = a;
-        if (ua == 0x0d)
+        if (ua == '\r')
             putchar('\n');
         else if (ua != 0x1d && ua != 0x93 && ua != 0x0a)
             putchar(a);
@@ -951,8 +951,8 @@ void handle_io()
     {
         while (!(a = getchar()))
             ;
-        if (a == 0xa)
-            a = 0xd;
+        if (a == '\n')
+            a = '\r';
         if (a >= 'a' && a <= 'z')
             a &= ~(1 << 5);
         pc = 0xe117;
