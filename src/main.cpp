@@ -267,7 +267,7 @@ bool get_operand(int8_t *op, uint16_t *op_addr, uint8_t ins, uint8_t *variants)
     {
         // zeropage indexed y
         load_ins_buf(2);
-        *op_addr = (uint8_t)ins_buf[1] + y;
+        *op_addr = (uint8_t)ins_buf[1] + (uint8_t)y;
         *op = read(*op_addr);
     }
     else if (ins == variants[4])
@@ -283,7 +283,7 @@ bool get_operand(int8_t *op, uint16_t *op_addr, uint8_t ins, uint8_t *variants)
         // zeropage indirect indexed y
         load_ins_buf(2);
         uint8_t op_addr_addr = (uint8_t)ins_buf[1];
-        *op_addr = read16(op_addr_addr) + y;
+        *op_addr = read16(op_addr_addr) + (uint8_t)y;
         *op = read(*op_addr);
     }
     else if (ins == variants[6])
