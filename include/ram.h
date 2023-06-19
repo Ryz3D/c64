@@ -1,3 +1,5 @@
-// $c000 - $d000
-// execute with SYS 49152
-unsigned char ram[4096] = {};
+#pragma once
+
+#include <stdint.h>
+
+extern uint8_t ram[4096];

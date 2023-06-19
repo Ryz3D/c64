@@ -51,6 +51,9 @@
         "xlocmon": "cpp",
         "xloctime": "cpp",
         "lhc.h": "c",
-        "fstream": "cpp"
+        "fstream": "cpp",
+        "memory.h": "c",
+        "basic.h": "c",
+        "cia.h": "c"
     }
 }

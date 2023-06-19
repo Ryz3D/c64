@@ -1,2 +1,5 @@
 /c64.exe
 /docs
+Simple DDE Draw.exe
+src/simple_draw.c
+include/simple_draw.h

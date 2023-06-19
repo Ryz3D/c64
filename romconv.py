@@ -5,5 +5,5 @@ for f in os.listdir("bin"):
         binary = fl.read()
     name = f.split(".")[0]
     strdata = ", ".join([str(x) for x in binary])
-    with open("include/" + name + ".h", "w") as fl:
-        fl.write(f"const unsigned char {name}[] = {{\n{strdata}\n}};\n")
+    with open("src/" + name + "_gen.c", "w") as fl:
+        fl.write(f"const uint8_t {name}[] = {{\n{strdata}\n}};\n")

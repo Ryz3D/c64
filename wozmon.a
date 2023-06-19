@@ -1,0 +1,205 @@
+!to"wozmon-c64.prg",cbm
+
+;  The WOZ Monitor for the Apple 1
+;  Written by Steve Wozniak in 1976
+
+;  Ported to the C64 in 2020
+;  https://www.forum64.de/index.php?thread/102540-wozmon-f%C3%BCr-c64/
+
+; Page 0 Variables
+
+XAML   = $f8        ; Last "opened" location Low
+XAMH   = $f9        ; Last "opened" location High
+STL    = $fa        ; Store address Low
+STH    = $fb        ; Store address High
+L      = $fc        ; Hex value parsing Low
+H      = $fd        ; Hex value parsing High
+YSAV   = $fe        ; Used to see if hex value is given
+MODE   = $ff        ; $00=XAM, $7f=STOR, $ae=BLOCK XAM
+IN     = $033c      ; Input buffer to $03bb
+
+*=$c000
+RESET:
+    cld             ; Clear decimal arithmetic mode.
+    cli
+    ldy #%01111111  ; Set up variable
+    lda $cb         ; get C= keyboard matrix
+
+NOTCR:
+    cmp #$00        ; Backspace key?
+    beq BACKSPACE   ; Yes.
+    cmp #$3e        ; "Q" for QUIT?
+    bne NOTEND
+    jmp ENDIT       ; Yes.
+
+NOTEND:
+    iny             ; Advance text index.
+    bpl NEXTCHAR    ; Auto ESC if > 127.
+
+ESCAPE:
+    lda #"/"        ; Print prompt character
+    jsr ECHO        ; Output it.
+
+GETLINE:
+    lda #$0d
+    tax
+    jsr ECHO        ; Output it.
+    ldy #0+1        ; Initialize text index.
+
+BACKSPACE:
+    dey             ; Back up text index.
+    bmi GETLINE     ; Beyond start of line, reinitialize.
+
+NEXTCHAR:
+    lda $cb         ; Key ready?
+    cmp $3b
+    beq NEXTCHAR    ; Loop if same as last character
+    sta $3b
+    cmp #64         ; =no key
+    beq NEXTCHAR    ; Loop until ready.
+    tax
+    lda $EB81,x     ; get character from unshifted decode table
+    sta IN,y        ; Add to text buffer.
+    jsr ECHO        ; Display PETSCII character.
+    txa             ; keyboard code (not PETSCII)
+    cmp #$01        ; CR?
+    bne NOTCR       ; It's not CR!
+    ldy #-1         ; Reset text index.
+    lda #$00        ; Default mode is XAM
+    tax             ; X=0
+
+SETMODE:
+    asl             ; Leaves $7b if setting STOR mode.
+
+SETSTOR:
+    asl
+    sta MODE        ; $00=XAM $7b=STOR $b8=BLOCK XAM
+
+BLSKIP:
+    iny             ; Advance text index.
+
+NEXTITEM:
+    lda IN,y        ; Get character.
+    cmp #$0d
+    beq GETLINE     ; We're done if it's CR!
+    cmp #46
+    bcc BLSKIP      ; Ignore everything below "."!
+    beq SETMODE     ; Set BLOCK XAM mode ("." = $ae)
+    cmp #58
+    beq SETSTOR     ; Yes. Set STOR mode.
+    cmp #82
+    beq RUN         ; Yes. Run user program.
+    stx L           ; $00-> L.
+    stx H           ; and H.
+    sty YSAV        ; Save Y for comparison.
+
+NEXTHEX:
+    lda IN,y        ; Get character for hex test.
+    eor #$30        ; Map digits to $0-9.
+    cmp #9+1        ; Digit?
+    bcc DIG         ; Yes.
+    adc #$88        ; Map letter "A"-"F" to $FA-FF.
+    cmp #$fa        ; Hex letter?
+    bcc NOTHEX      ; No, character not hex.
+
+DIG:
+    asl
+    asl             ; Hex digit to MSD of A.
+    asl
+    asl
+    ldx #$04        ; Shift count.
+
+HEXSHIFT:
+    asl             ; Hex digit left, MSB to carry.
+    rol L           ; Rotate into LSD.
+    rol H           ; Rotate into MSD’s.
+    dex             ; Done 4 shifts?
+    bne HEXSHIFT    ; No, loop.
+    iny             ; Advance text index.
+    bne NEXTHEX     ; Always taken. Check next char for hex.
+
+NOTHEX:
+    cpy YSAV        ; Check if L, H empty (no hex digits).
+    beq ESCAPE      ; Yes, generate ESC sequence.
+    bit MODE        ; Test MODE byte.
+    bvc NOTSTOR     ; b6=0 STOR 1 for XAM & BLOCK XAM
+    lda L           ; LSD’s of hex data.
+    sta (STL,x)     ; Store at current ‘store index’.
+    inc STL         ; Increment store index.
+    bne NEXTITEM    ; Get next item. (no carry).
+    inc STH         ; Add carry to ‘store index’ high order.
+
+TONEXTITEM:
+    jmp NEXTITEM    ; Get next command item.
+
+RUN:
+    jmp (XAML)      ; Run at current XAM index.
+
+NOTSTOR:
+    bmi XAMNEXT     ; B7=0 for XAM, 1 for BLOCK XAM.
+    ldx #$02        ; Byte count.
+
+SETADR:
+    lda L-1,x       ; Copy hex data to
+    sta STL-1,x     ; ‘store index’.
+    sta XAML-1,x    ; And to ‘XAM index’.
+    dex             ; Next of 2 bytes.
+    bne SETADR      ; Loop unless X=0.
+
+NXTPRNT:
+    bne PRDATA      ; NE means no address to print.
+    lda #$0d        ; CR.
+    jsr ECHO        ; Output it.
+    lda XAMH        ; ‘Examine index’ high-order byte.
+    jsr PRBYTE      ; Output it in hex format.
+    lda XAML        ; Low-order ‘examine index’ byte.
+    jsr PRBYTE      ; Output it in hex format.
+    lda #":"        ; Print colon
+    jsr ECHO        ; Output it.
+
+PRDATA:
+    lda #" "        ; Print space
+    jsr ECHO
+    lda (XAML,x)    ; Get data byte at ‘examine index’.
+    jsr PRBYTE      ; Output it in hex format.
+
+XAMNEXT:
+    stx MODE        ; 0->MODE (XAM mode).
+    lda XAML
+    cmp L           ; Compare ‘examine index’ to hex data.
+    lda XAMH
+    sbc H
+    bcs TONEXTITEM  ; Not less, so no more data to output.
+    inc XAML
+    bne MOD8CHK     ; Increment ‘examine index’.
+    inc XAMH
+
+MOD8CHK:
+    lda XAML        ; Check low-order ‘examine index’ byte
+    and #%00000111  ; For MOD 8=0
+    bpl NXTPRNT     ; Always taken.
+
+PRBYTE:
+    pha             ; Save A for LSD.
+    lsr
+    lsr
+    lsr             ; MSD to LSD position.
+    lsr
+    jsr PRHEX       ; Output hex digit.
+    pla             ; Restore A.
+
+PRHEX:
+    and #%00001111  ; Mask LSD for hex print.
+    ora #"0"        ; Add "0".
+    cmp #"9"+1      ; Is it a decimal Digit?
+    bcc ECHO        ; Yes, output it.
+    adc #$06        ; Add offset for letter.
+
+ECHO:
+    jsr $e716       ; C= Basic char out to screen
+
+ENDIT:
+    rts             ; Return.
+
+DSPOUT:
+    !by $00,$00
